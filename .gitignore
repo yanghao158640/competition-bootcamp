@@ -1,0 +1,21 @@
+# ===== Netlify local state =====
+.netlify/
+
+# ===== OS files =====
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ===== IDE files =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== Sensitive / Privacy =====
+# 注意：如果未来添加了 .env、API key、token 等文件，请在此排除
+# .env
+# .env.local
+# *.key
+# *.pem
