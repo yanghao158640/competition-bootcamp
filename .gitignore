@@ -1,4 +1,9 @@
-# ===== Netlify local state =====
+# ============================================================
+# 竞赛训练营 - .gitignore
+# 原则：仓库只放「网站源码 + 文档」，任何密钥/凭证/构建产物都不进版本库
+# ============================================================
+
+# ===== Netlify 本地状态 =====
 .netlify/
 
 # ===== Node.js =====
@@ -7,24 +12,65 @@ npm-debug.log*
 package-lock.json
 package.json
 
-# ===== Git setup scripts =====
+# ===== Git 初始化脚本(含 token,不入库) =====
 setup-github.js
 
-# ===== OS files =====
+# ===== 含明文密钥的部署/运维脚本(严禁入库!) =====
+# 这些文件里硬编码了 Netlify token / 阿里云 AccessKey 等真实凭证
+# 它们只在你本机用于部署，绝对不能推到 GitHub
+add-dns-records.ps1
+check-netlify.ps1
+netlify-domain.ps1
+
+# ===== 构建产物 / 缓存(如有) =====
+dist/
+build/
+.output/
+.cache/
+*.zip
+*.tar.gz
+
+# ===== OS 文件 =====
 Thumbs.db
 .DS_Store
 desktop.ini
 
-# ===== IDE files =====
+# ===== IDE 文件 =====
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# ===== Sensitive / Privacy =====
-# 注意：如果未来添加了 .env、API key、token 等文件，请在此排除
-# .env
-# .env.local
-# *.key
-# *.pem
+# ===== 敏感 / 隐私文件(重点排除项) =====
+# 环境变量与密钥
+.env
+.env.*
+*.local.env
+
+# 私钥 / 证书 / 密钥库
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.keystore
+*.jks
+
+# 数据库 /  dump
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*-wal
+*-shm
+
+# 通用敏感词(文件名含以下字样直接排除)
+*secret*
+*credential*
+*token*
+*password*
+
+# 日志
+*.log
