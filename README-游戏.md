@@ -90,7 +90,9 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
   body{min-height:100vh;display:flex;flex-direction:column;align-items:center;
     justify-content:center;gap:14px;padding:20px;
     font-family:"PingFang SC","Microsoft YaHei",sans-serif;
-    background:linear-gradient(160deg,#0e1513,#14231e);color:#e8f1ed}
+    background:linear-gradient(160deg,#0e1513,#14231e);color:#e8f1ed;
+    touch-action:manipulation;overscroll-behavior:none;
+    -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none}
   h1{font-size:24px;letter-spacing:4px}
   h1 span{color:#2fd397}
   .hud{display:flex;gap:16px;font-size:14px;color:#9db4ab;flex-wrap:wrap;justify-content:center}
@@ -151,13 +153,31 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
   .good p{font-size:11px;color:#9db4ab;line-height:1.6;min-height:32px}
   .good .cost{margin-top:6px;font-size:13px;color:#ffd666;font-weight:700}
   .hide{display:none!important}
-  /* ---------- 移动端虚拟按键 ---------- */
-  .pad{display:none;gap:40px;margin-top:4px}
-  .pad .dir{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:6px}
-  .pad button{border:1px solid #2a3d35;background:#182420;color:#2fd397;
-    border-radius:10px;font-size:20px;touch-action:none;user-select:none}
-  .pad .fire{width:72px;height:72px;border-radius:50%;align-self:center;font-size:16px}
-  @media (pointer:coarse){.pad{display:flex}.tips .pc{display:none}}
+  /* ---------- 移动端虚拟按键（底部悬浮，拇指友好） ---------- */
+  .pad{display:none;position:fixed;left:0;right:0;bottom:0;z-index:40;
+    align-items:flex-end;justify-content:space-between;
+    padding:10px calc(10px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+    pointer-events:none}
+  .pad>*{pointer-events:auto}
+  .dpad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:4px}
+  .dpad button{border:1px solid #2a3d35;background:rgba(24,36,32,.72);color:#2fd397;
+    border-radius:14px;font-size:26px;touch-action:none;user-select:none;
+    -webkit-tap-highlight-color:transparent}
+  .dpad button:active{background:rgba(47,211,151,.28)}
+  .dpad .up{grid-area:1/2}.dpad .left{grid-area:2/1}
+  .dpad .right{grid-area:2/3}.dpad .down{grid-area:3/2}
+  .fire{width:88px;height:88px;border-radius:50%;border:2px solid #ff7a6e;
+    background:rgba(120,40,32,.66);color:#ffb4ae;font-size:17px;font-weight:700;
+    touch-action:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  .fire:active{background:rgba(255,122,110,.4)}
+  .rotateHint{display:none;font-size:12px;color:#9db4ab;letter-spacing:1px}
+  @media (pointer:coarse){
+    .pad{display:flex}
+    .tips .pc{display:none}
+  }
+  @media (max-width:600px) and (orientation:portrait){
+    .rotateHint{display:block}
+  }
 </style>
 </head>
 <body>
@@ -256,11 +276,13 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
   <span class="pc">移动：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向键 &nbsp;·&nbsp; 开炮：<kbd>空格</kbd> &nbsp;·&nbsp; 确认/继续：<kbd>回车</kbd> &nbsp;·&nbsp; 选坦克：<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span><br>
   拾取场上道具能帮你守住营地；通关记得去商店消费，主界面可永久升级！
 </div>
-<div class="pad">
-  <div class="dir">
-    <span></span><button data-k="up">▲</button><span></span>
-    <button data-k="left">◀</button><span></span><button data-k="right">▶</button>
-    <span></span><button data-k="down">▼</button><span></span>
+<div class="rotateHint">📱 横屏体验更佳，请旋转手机</div>
+<div class="pad" id="pad">
+  <div class="dpad">
+    <button class="up" data-k="up">▲</button>
+    <button class="left" data-k="left">◀</button>
+    <button class="right" data-k="right">▶</button>
+    <button class="down" data-k="down">▼</button>
   </div>
   <button class="fire" data-k="fire">开炮</button>
 </div>
@@ -785,6 +807,7 @@ function startRewind(){
   });
   if(boss&&!boss.dead)rewindList.push({e:boss,fx:boss.x,fy:boss.y,tx:11*CELL+4,ty:CELL});
   bullets=[];freezeT=0;
+  map=buildMap(level);computeDist();computePlayerDist();   // 砖墙/障碍倒流回本关初始态
   baseHp=baseMaxHp;player.hp=player.maxHp;player.shieldT=0;
   syncHud();
 }
@@ -935,6 +958,7 @@ function step(){
   if(player.invT>0)player.invT--;
   if(player.shieldT>0)player.shieldT--;
   if(rapidT>0)rapidT--;
+  if(keys.fire)fire(player,true);               // 长按开炮（手机端）
   const cfg=levelCfg();
   if(--spawnTimer<=0&&enemies.length<cfg.alive&&foesTotal>0){spawnTimer=Math.round(90/cfg.rate);spawnEnemy()}
   for(let gi=0;gi<3;gi++)if(gateFlash[gi]>0)gateFlash[gi]--;
@@ -1238,7 +1262,7 @@ function draw(){
     CX.restore();
   }
 }
-function loop(){step();draw();requestAnimationFrame(loop)}
+function loop(){step();draw();updatePad();requestAnimationFrame(loop)}
 
 /* ================= 状态推进 ================= */
 function advance(){
@@ -1279,14 +1303,27 @@ document.querySelectorAll('.tk').forEach(el=>{
 });
 document.querySelectorAll('.pad button').forEach(btn=>{
   const k=btn.dataset.k;
-  const on=e=>{e.preventDefault();
-    if(k==='fire'){if(state==='playing')fire(player,true);else advance()}
-    else keys[k]=true};
-  const off=e=>{e.preventDefault();if(k!=='fire')keys[k]=false};
-  btn.addEventListener('touchstart',on,{passive:false});
-  btn.addEventListener('touchend',off,{passive:false});
-  btn.addEventListener('mousedown',on);btn.addEventListener('mouseup',off);
+  const down=e=>{
+    e.preventDefault();
+    if(k==='fire'){
+      keys.fire=true;
+      if(['ready','over','win','shop'].includes(state))advance();   // 结算/待命时点击开炮=继续
+    }else keys[k]=true;
+  };
+  const up=e=>{e.preventDefault();keys[k]=false};
+  btn.addEventListener('touchstart',down,{passive:false});
+  btn.addEventListener('touchend',up);
+  btn.addEventListener('touchcancel',up);
+  btn.addEventListener('mousedown',down);
+  btn.addEventListener('mouseup',up);
+  btn.addEventListener('mouseleave',up);
 });
+document.addEventListener('touchmove',e=>{if(e.target.closest&&e.target.closest('.pad'))e.preventDefault()},{passive:false});
+function updatePad(){
+  const pad=document.getElementById('pad');
+  if(!pad)return;
+  pad.classList.toggle('hide',!['playing','ready','rewind','shop','over','win'].includes(state));
+}
 
 /* ================= 启动 ================= */
 keys={};enemies=[];bullets=[];parts=[];rings=[];floats=[];items=[];
