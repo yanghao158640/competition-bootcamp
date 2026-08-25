@@ -494,10 +494,22 @@ function rectHitsWall(x,y,s){
   if(x<BASE.x+BASE.w&&x+s>BASE.x&&y<BASE.y+BASE.h&&y+s>BASE.y)return true;
   return false;
 }
+/* 坦克间碰撞：任何坦克都不能开进其他坦克的占位（防止贴脸重叠打不中） */
+function hitsOtherTank(self,x,y,s){
+  const boxes=[];
+  if(self!==player&&player)boxes.push(player);
+  for(const e of enemies)if(e!==self)boxes.push(e);
+  if(boss&&!boss.dead&&self!==boss)boxes.push(boss);
+  const es=CELL-6;
+  return boxes.some(o=>{
+    const os=o.size||es;
+    return x<o.x+os&&x+s>o.x&&y<o.y+os&&y+s>o.y;
+  });
+}
 function tankMove(t,dx,dy){
   const s=t.size||(CELL-6),nx=t.x+dx,ny=t.y+dy;
-  if(!rectHitsWall(nx,t.y,s))t.x=nx;
-  if(!rectHitsWall(t.x,ny,s))t.y=ny;
+  if(!rectHitsWall(nx,t.y,s)&&!hitsOtherTank(t,nx,t.y,s))t.x=nx;
+  if(!rectHitsWall(t.x,ny,s)&&!hitsOtherTank(t,t.x,ny,s))t.y=ny;
 }
 
 /* ================= 开炮 / 爆炸 / 飘字 ================= */
