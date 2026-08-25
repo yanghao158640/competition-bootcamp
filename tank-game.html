@@ -108,6 +108,7 @@
   <div>得分<b id="score">0</b></div>
   <div>金币<b id="coins">🪙0</b></div>
   <div>营地耐久<b id="baseHp">❤❤❤❤❤❤❤</b></div>
+  <div>守护<b id="guards">×3</b></div>
 </div>
 
 <div class="stage">
@@ -123,8 +124,9 @@
       <li>🕹️ <b>操作</b>：WASD / 方向键移动，空格开炮（手机端使用屏幕虚拟按键）</li>
       <li>🤖 <b>敌军</b>：从顶部三个<b>出生门</b>传送入场——多数寻路进攻营地，头带红色标记的<b>猎手</b>会主动追杀你的坦克，都会拆墙开路</li>
       <li>👹 <b>BOSS 单挑</b>：第 4、8 关只有一辆巨型坦克——血量厚、三连发炮弹、能直接撞碎砖墙，击毁奖励大量金币</li>
-      <li>🎁 <b>随机道具</b>：⭐火力 / 🔧修营地 / 🛡️无敌 / ❄️冻结敌军 / 💣清屏 / 🪙金币，走过去即可拾取</li>
+      <li>🎁 <b>随机道具</b>：⭐火力 / 🔧修营地 / 🛡️无敌 / ❄️冻结 / 💣清屏 / 🪙金币 / ❤️加命 / ⚡速射，走过去即可拾取</li>
       <li>🛒 <b>商店</b>：每关通关获得金币，可在通关后的商店中强化营地或坦克</li>
+      <li>🕒 <b>守护·时间倒流</b>：营地有 <b>3 次守护</b>——失守瞬间时间暂停，敌军与我方坦克缓缓回退原位、营地满血复活；3 次耗尽才判定失败</li>
     </ul>
     <button id="rulesOk">我已了解，开始游戏 ▶</button>
   </div>
@@ -233,7 +235,9 @@ const ITEM_TYPES={
   shield:{ico:'🛡️',label:'无敌',c1:'#7dd3fc',c2:'#0b7fab'},
   freeze:{ico:'❄️',label:'冻结',c1:'#e0f2fe',c2:'#38bdf8'},
   bomb:  {ico:'💣',label:'爆破',c1:'#fca5a5',c2:'#dc2626'},
-  coin:  {ico:'🪙',label:'金币',c1:'#fde68a',c2:'#d97706'}
+  coin:  {ico:'🪙',label:'金币',c1:'#fde68a',c2:'#d97706'},
+  life:  {ico:'❤️',label:'加命',c1:'#fda4af',c2:'#e11d48'},
+  rapid: {ico:'⚡',label:'速射',c1:'#fde047',c2:'#ca8a04'}
 };
 const ITEM_KEYS=Object.keys(ITEM_TYPES);
 /* ================= 商店商品 ================= */
@@ -335,6 +339,11 @@ const S={
   item(){tone(880,.1,'triangle',.15);setTimeout(()=>tone(1174,.12,'triangle',.15),90)},
   coin(){tone(1320,.07,'square',.10)},
   boss(){tone(70,.6,'sawtooth',.3);noise(.5,.3)},
+  timeStop(){                                    // JOJO 风时间暂停：三声滴答 → 时间停住的低频嗡鸣
+    [0,160,320].forEach((t)=>setTimeout(()=>tone(1400,.06,'square',.20),t));
+    setTimeout(()=>{tone(55,1.4,'sawtooth',.22);tone(82,1.4,'sawtooth',.14);noise(1.4,.16)},500);
+  },
+  rewind(){tone(200,.5,'sawtooth',.12);setTimeout(()=>tone(380,.5,'sawtooth',.12),130);setTimeout(()=>tone(560,.6,'sawtooth',.12),260)},
   win(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.18,'triangle',.15),i*140))},
   lose(){[400,300,200,120].forEach((f,i)=>setTimeout(()=>tone(f,.25,'sawtooth',.15),i*180))}
 };
@@ -342,6 +351,8 @@ const S={
 /* ================= 游戏状态 ================= */
 let player,enemies,bullets,parts,rings,floats,items,keys,state,score,lives,foesTotal,spawnTimer,level,shake;
 let boss=null,freezeT=0,itemTimer=0,coins=0,levelKills=0,overMsg='',pDistTimer=0;
+let guards=3,rapidT=0;                           // 守护次数 / 速射剩余时间
+let rewindT=0,rewDur=0,rewindPlayer=null,rewindList=[];   // 时间倒流状态
 let mods,bought;                               // 本局强化 / 已购商品
 
 function newPlayer(type){
@@ -352,7 +363,7 @@ function newPlayer(type){
     invT:0,shieldT:0,maxHp:mods.maxHp,hp:mods.maxHp};
 }
 function startGame(type){
-  level=1;score=0;lives=3;coins=0;
+  level=1;score=0;lives=3;coins=0;guards=3;rapidT=0;   // 每局守护重置 3 次
   mods={dmg:0,speedMul:1,coolMul:1,maxHp:3};bought={};
   baseMaxHp=BASE_DEFAULT_HP;baseHp=baseMaxHp;steelWallNext=false;   // 每局营地血量重置
   player=newPlayer(type);
@@ -375,6 +386,17 @@ function setupLevel(){
   player.x=3*CELL;player.y=12*CELL;player.dir='up';player.invT=90;player.hp=player.maxHp;
   computeDist();computePlayerDist();
 }
+function findSpawn(){
+  const cands=[[3,12],[1,12],[3,11],[22,12],[20,12],[3,9]];
+  for(const [c,r] of cands){
+    const x=c*CELL,y=r*CELL;
+    if(!rectHitsWall(x,y,CELL-6)&&
+       !enemies.some(e=>Math.abs(e.x-x)<CELL&&Math.abs(e.y-y)<CELL)&&
+       !(boss&&!boss.dead&&x<boss.x+boss.size&&x+CELL>boss.x&&y<boss.y+boss.size&&y+CELL>boss.y))
+      return {x,y};
+  }
+  return {x:3*CELL,y:12*CELL};
+}
 function nextLevel(){
   level++;
   lives=3;                                      // 每关开始生命重置为 3 条
@@ -396,6 +418,7 @@ function syncHud(){
   document.getElementById('score').textContent=score;
   document.getElementById('coins').textContent='🪙'+coins;
   document.getElementById('baseHp').textContent=hearts(baseHp);
+  document.getElementById('guards').textContent='×'+guards;
 }
 
 /* ================= 寻路：以营地为目标的距离场 ================= */
@@ -449,7 +472,7 @@ function tankMove(t,dx,dy){
 /* ================= 开炮 / 爆炸 / 飘字 ================= */
 function fire(t,friendly){
   if(t.cool>0)return;
-  t.cool=friendly?t.bcool:Math.round(55/LEVELS[level-1].rate);
+  t.cool=friendly?Math.round(t.bcool*(rapidT>0?0.4:1)):Math.round(55/LEVELS[level-1].rate);   // ⚡速射：冷却×0.4
   const s=t.size||(CELL-6),[dx,dy]=DIRS[t.dir];
   bullets.push({x:t.x+s/2-4+dx*20,y:t.y+s/2-4+dy*20,dx,dy,
     speed:friendly?t.bspeed:5,dmg:friendly?t.dmg:1,friendly});
@@ -494,6 +517,8 @@ function applyItem(type){
       if(boss&&!boss.dead){boss.hp-=5;boss.hitT=8;if(boss.hp<=0)killBoss()}
       break;
     case 'coin':coins+=80;S.coin();break;
+    case 'life':lives=Math.min(5,lives+1);break;    // ❤️加命（上限 5）
+    case 'rapid':rapidT=900;break;                  // ⚡速射 15 秒
   }
   syncHud();checkLevelEnd();
 }
@@ -508,6 +533,8 @@ function spawnEnemy(){
   const x=c*CELL+3,y=r*CELL+3;
   if(rectHitsWall(x,y,CELL-6))return;
   if(enemies.some(e=>Math.abs(e.x-x)<CELL&&Math.abs(e.y-y)<CELL))return;
+  if(Math.abs(x-player.x)<CELL&&Math.abs(y-player.y)<CELL)return;       // 不压在玩家头上出生
+  if(boss&&!boss.dead&&x<boss.x+boss.size&&x+CELL>boss.x&&y<boss.y+boss.size&&y+CELL>boss.y)return;
   const kind=cfg.mix[Math.floor(Math.random()*cfg.mix.length)];
   const ft=FOE_TYPES[kind];
   // 猎手概率：部分敌军直接猎杀玩家（快速车最凶），同时存活猎手≤2 控难度
@@ -643,6 +670,47 @@ function gameOver(){
   overMsg=CHEERS[Math.floor(Math.random()*CHEERS.length)];
   state='over';S.lose();
 }
+/* ================= 守护·时间倒流 ================= */
+function startRewind(){
+  guards--;                                        // 消耗一次守护
+  state='rewind';rewindT=0;rewDur=100;
+  S.timeStop();addShake(12);                       // JOJO 风时间暂停音效
+  rewindPlayer={x:player.x,y:player.y};
+  rewindList=[];
+  enemies.forEach(e=>{
+    const gi=Math.floor(Math.random()*GATES.length);
+    rewindList.push({e,fx:e.x,fy:e.y,tx:GATES[gi][0]*CELL+3,ty:GATES[gi][1]*CELL+3});
+  });
+  if(boss&&!boss.dead)rewindList.push({e:boss,fx:boss.x,fy:boss.y,tx:11*CELL+4,ty:CELL});
+  bullets=[];freezeT=0;
+  baseHp=baseMaxHp;player.hp=player.maxHp;player.shieldT=0;   // 营地满血复活
+  syncHud();
+}
+function rewindUpdate(){
+  rewindT++;
+  const k=Math.min(1,rewindT/rewDur),e=k*k*(3-2*k);          // 缓动：先慢后快再缓
+  player.x=rewindPlayer.x+(3*CELL-rewindPlayer.x)*e;
+  player.y=rewindPlayer.y+(12*CELL-rewindPlayer.y)*e;
+  rewindList.forEach(r=>{r.e.x=r.fx+(r.tx-r.fx)*e;r.e.y=r.fy+(r.ty-r.fy)*e});
+  if(rewindT>=rewDur){state='playing';player.dir='up';player.invT=90;S.rewind()}
+}
+/* 逐帧安全网：任何敌军与玩家重叠时强制分离（根治贴脸打不中） */
+function rectOverlap(a,b,s){return a.x<b.x+s&&a.x+s>b.x&&a.y<b.y+s&&a.y+s>b.y}
+function resolveOverlaps(){
+  const s=CELL-6;
+  enemies.forEach(e=>{
+    if(e.spawnT>0||!rectOverlap(e,player,s))return;
+    let placed=false;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=e.x+dx*CELL,ny=e.y+dy*CELL;
+      if(!rectHitsWall(nx,ny,s)&&!hitsOtherTank(e,nx,ny,s)){e.x=nx;e.y=ny;placed=true;break}
+    }
+    if(!placed){
+      if(Math.abs(e.x-player.x)<Math.abs(e.y-player.y))e.x=player.x+(e.x>=player.x?s:-s);
+      else e.y=player.y+(e.y>=player.y?s:-s);
+    }
+  });
+}
 function checkLevelEnd(){
   if(state!=='playing')return;
   if(foesTotal===0&&enemies.length===0&&(!boss||boss.dead)){
@@ -701,12 +769,14 @@ function buy(id){
 
 /* ================= 主循环 ================= */
 function step(){
+  if(state==='rewind'){rewindUpdate();return}
   if(state!=='playing')return;
   // 玩家
   for(const d in DIRS)if(keys[d]){player.dir=d;tankMove(player,DIRS[d][0]*player.speed,DIRS[d][1]*player.speed)}
   if(player.cool>0)player.cool--;
   if(player.invT>0)player.invT--;
   if(player.shieldT>0)player.shieldT--;
+  if(rapidT>0)rapidT--;
   // 敌军补充与行动（❄️ 冻结时全体暂停）
   const cfg=LEVELS[level-1];
   if(--spawnTimer<=0&&enemies.length<cfg.alive&&foesTotal>0){spawnTimer=Math.round(90/cfg.rate);spawnEnemy()}
@@ -731,27 +801,28 @@ function step(){
   // 炮弹
   for(let i=bullets.length-1;i>=0;i--){
     const b=bullets[i];
+    if(!b)continue;                              // 跳过已标记移除的炮弹
     b.x+=b.dx*b.speed;b.y+=b.dy*b.speed;
-    if(b.x<0||b.y<0||b.x>960||b.y>600){bullets.splice(i,1);continue}
-    // 炮弹对撞（敌我抵消）
+    if(b.x<0||b.y<0||b.x>960||b.y>600){bullets[i]=null;continue}
+    // 炮弹对撞（敌我抵消，标记移除避免索引错位）
     if(b.friendly){
-      const j=bullets.findIndex(o=>o!==b&&!o.friendly&&Math.abs(o.x-b.x)<8&&Math.abs(o.y-b.y)<8);
-      if(j>-1){bullets.splice(j,1);bullets.splice(i,1);boom(b.x,b.y,false);continue}
+      const j=bullets.findIndex(o=>o&&o!==b&&!o.friendly&&Math.abs(o.x-b.x)<8&&Math.abs(o.y-b.y)<8);
+      if(j>-1){bullets[j]=null;bullets[i]=null;boom(b.x,b.y,false);continue}
     }
     const c=Math.floor((b.x+4)/CELL),r=Math.floor((b.y+4)/CELL);
     if(c>=0&&r>=0&&c<COLS&&r<ROWS&&map[r][c]!==EMPTY){
       if(map[r][c]===BRICK){map[r][c]=EMPTY;computeDist();boom(b.x,b.y,false)}
       else addShake(1);
-      bullets.splice(i,1);continue;
+      bullets[i]=null;continue;
     }
     // 命中营地（仅敌方炮弹造成伤害）
     if(!b.friendly&&b.x<BASE.x+BASE.w&&b.x+8>BASE.x&&b.y<BASE.y+BASE.h&&b.y+8>BASE.y){
-      bullets.splice(i,1);
+      bullets[i]=null;
       baseHp--;S.baseHit();addShake(12);
       boom(b.x,b.y,true);
       addFloat(BASE.x+40,BASE.y-8,'-1 耐久','#ff7a6e');
       syncHud();
-      if(baseHp<=0)gameOver()
+      if(baseHp<=0){ if(guards>0)startRewind(); else gameOver(); }   // 有守护→时间倒流，否则失败
       continue;
     }
     const s=CELL-6;
@@ -759,7 +830,7 @@ function step(){
       // 命中 BOSS
       if(boss&&!boss.dead&&b.x<boss.x+boss.size&&b.x+8>boss.x&&b.y<boss.y+boss.size&&b.y+8>boss.y){
         boss.hp-=b.dmg;boss.hitT=6;
-        bullets.splice(i,1);
+        bullets[i]=null;
         if(boss.hp<=0){killBoss();syncHud();checkLevelEnd()}
         else{S.hit();parts.push({x:b.x,y:b.y,vx:0,vy:0,life:8,muzzle:true})}
         continue;
@@ -768,7 +839,7 @@ function step(){
       if(idx>-1){
         const e=enemies[idx];
         e.hp-=b.dmg;e.hitT=6;
-        bullets.splice(i,1);
+        bullets[i]=null;
         if(e.hp<=0){
           boom(e.x+17,e.y+17,true);
           addFloat(e.x+17,e.y-6,'+'+e.score,'#ffd666');
@@ -781,12 +852,12 @@ function step(){
       }
     }else if(player.invT<=0&&player.shieldT<=0){
       if(b.x<player.x+s&&b.x+8>player.x&&b.y<player.y+s&&b.y+8>player.y){
-        bullets.splice(i,1);
+        bullets[i]=null;
         player.hp--;                                // 先扣血再扣命
         if(player.hp<=0){
           boom(player.x+17,player.y+17,true);
           if(--lives<=0)gameOver()
-          else{player.x=3*CELL;player.y=12*CELL;player.dir='up';player.hp=player.maxHp;player.invT=120}
+          else{const sp=findSpawn();player.x=sp.x;player.y=sp.y;player.dir='up';player.hp=player.maxHp;player.invT=120}
         }else{
           S.hit();addShake(5);player.invT=45;
           parts.push({x:b.x,y:b.y,vx:0,vy:0,life:8,muzzle:true});
@@ -796,6 +867,7 @@ function step(){
       }
     }
   }
+  bullets=bullets.filter(Boolean);              // 清理已标记移除的炮弹
   // 粒子 / 冲击环 / 飘字 / 震动衰减
   for(let i=parts.length-1;i>=0;i--){
     const p=parts[i];p.x+=p.vx;p.y+=p.vy;if(--p.life<=0)parts.splice(i,1);
@@ -806,6 +878,7 @@ function step(){
   for(let i=floats.length-1;i>=0;i--){
     const f=floats[i];f.y-=.8;if(--f.life<=0)floats.splice(i,1);
   }
+  resolveOverlaps();                            // 逐帧分离重叠（兜底）
   if(shake>0){shake*=.86;if(shake<.4)shake=0}
 }
 
@@ -1010,19 +1083,21 @@ function draw(){
   CX.fillStyle='rgba(255,255,255,.55)';CX.font='bold 14px "Microsoft YaHei"';
   CX.textAlign='right';CX.fillText('杨豫豪 · YYH 原创',950,588);
   // 状态遮罩
-  if(state==='ready'||state==='over'||state==='win'){
+  if(state==='ready'||state==='rewind'||state==='over'||state==='win'){
     CX.fillStyle='rgba(5,12,10,.72)';CX.fillRect(0,0,960,600);
     CX.textAlign='center';CX.fillStyle='#2fd397';
     CX.font='bold 42px "Microsoft YaHei"';
     const cfg=LEVELS[level-1];
     const msg={
       ready:cfg&&cfg.boss?'⚠️ 第 '+level+' 关 · BOSS 战':'第 '+level+' 关',
+      rewind:'🕒 时间倒流！',
       win:'🏆 全部通关！',
       over:'💥 游戏结束'
     }[state];
     CX.fillText(msg,480,262);
     CX.font='17px "Microsoft YaHei"';CX.fillStyle='#e8f1ed';
     if(state==='ready')CX.fillText(cfg&&cfg.boss?'击毁巨型坦克！按 回车 出击':'按 回车 出击（敌军 '+cfg.total+' 辆）',480,310);
+    if(state==='rewind')CX.fillText('守护剩余 '+guards+' 次 · 坦克缓缓回退原位',480,310);
     if(state==='win')CX.fillText('最终得分：'+score+' · 金币：'+coins+'，按 回车 再战',480,310);
     if(state==='over'){
       CX.fillText(overMsg,480,310);
