@@ -119,7 +119,7 @@
     <div class="sub">守住营地 🏫，歼灭敌军 · 金币全局累计，输了也能永久变强</div>
     <div class="coins">🪙 我的金币：<b id="menuCoins">0</b></div>
     <button class="menuBtn" id="btnCampaign">⚔️ 闯关模式<span class="tag">15 关 · 每 4 关一个 BOSS</span></button>
-    <button class="menuBtn" id="btnSurvival">♾️ 生存模式<span class="tag">无尽波次 · 生存越久金币越多 · 20 天解锁永久 buff</span></button>
+    <button class="menuBtn" id="btnSurvival">♾️ 生存模式<span class="tag">最高 20 天 · 生存越久金币越多 · 通关解锁永久 buff</span></button>
     <button class="menuBtn" id="btnUpgrade">🔧 永久升级<span class="tag">用金币永久强化坦克与营地</span></button>
     <button class="menuBtn small" id="btnRules">📖 游戏规则</button>
   </div>
@@ -139,14 +139,14 @@
     <ul>
       <li>🎯 <b>目标</b>：守住底部营地 🏫，歼灭每关全部敌军</li>
       <li>🏫 <b>营地耐久</b>：最多承受 7 发炮弹（每局重置），归零触发「守护·时间倒流」</li>
-      <li>❤️ <b>我方血量</b>：每条命 3 发，共 3 条生命；每关开始生命重置</li>
+      <li>❤️ <b>我方血量</b>：每条命 3 发，共 3 条生命；受击后 0.5 秒无敌；每关开始生命重置</li>
       <li>🕹️ <b>操作</b>：WASD / 方向键移动，空格开炮（手机用屏幕虚拟按键）</li>
       <li>🤖 <b>敌军</b>：从顶部三个出生门传送入场；多数打营地，头带红标的「猎手」追杀你</li>
       <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 / 12 / 15 关单挑巨型坦克，击毁大量金币</li>
       <li>🎁 <b>道具</b>：⭐火力 🔧修理 🛡️无敌 ❄️冻结 💣爆破 🪙金币 ❤️加命 ⚡速射</li>
       <li>🛒 <b>商店</b>：每关通关后可用金币强化（本局内生效）</li>
       <li>🔧 <b>永久升级</b>：主界面的永久升级对所有模式生效，输了金币仍在</li>
-      <li>♾️ <b>生存模式</b>：波次越后越难，金币越多；5 天 +200、10 天 +500、20 天 +2000 并解锁永久 buff「黄金徽章」</li>
+      <li>♾️ <b>生存模式</b>：最高 20 天，越后越难金币越多；5 天 +200、10 天 +500、20 天 +2000 并解锁永久 buff「黄金徽章」</li>
       <li>🕒 <b>守护·时间倒流</b>：营地 3 次守护，失守时时间暂停、敌军回退、营地满血</li>
     </ul>
     <button class="pri" id="rulesOk">返回主界面</button>
@@ -209,6 +209,7 @@ const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 const ENEMY_DIRS=['up','down','left','right'];
 const BASE_DEFAULT_HP=7;                       // 营地初始耐久：7 发炮弹
 const CAMPAIGN_LEVELS=15;                      // 闯关模式 15 关
+const SURVIVAL_MAX=20;                         // 生存模式最高 20 天
 
 /* ================= 永久进度（localStorage 持久化） ================= */
 const LS=(typeof localStorage!=='undefined')?localStorage:null;
@@ -316,6 +317,7 @@ const PRAISES=['漂亮！营地毫发无损靠的就是你这手感！','干净�
 const CHEERS=['别灰心！营地的砖还热乎着，再来一局一定能守住！','失败是成功他妈，调整策略再冲一次！',
   '差一点点！下次记得在商店优先加固营地！','好汉不吃眼前亏，换个坦克类型试试？',
   '金币都攒着呢，去主界面永久升级一下再战！'];
+const CELEB_COLORS=['#ffd666','#2fd397','#7dd3fc','#ff7a6e','#a06ae0','#fde047'];
 
 /* ================= 地图构建 =================
    中央砖墙摆出姓名缩写「YYH」（5 行高，共 11 列宽，居中于第 6~16 列） */
@@ -385,6 +387,7 @@ const S={
     setTimeout(()=>{tone(55,1.4,'sawtooth',.22);tone(82,1.4,'sawtooth',.14);noise(1.4,.16)},500)},
   rewind(){tone(200,.5,'sawtooth',.12);setTimeout(()=>tone(380,.5,'sawtooth',.12),130);setTimeout(()=>tone(560,.6,'sawtooth',.12),260)},
   win(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.18,'triangle',.15),i*140))},
+  fanfare(){[523,659,784,1046,1318,1568].forEach((f,i)=>setTimeout(()=>tone(f,.26,'triangle',.16),i*150))},
   lose(){[400,300,200,120].forEach((f,i)=>setTimeout(()=>tone(f,.25,'sawtooth',.15),i*180))}
 };
 
@@ -394,6 +397,7 @@ let boss=null,freezeT=0,itemTimer=0,coins=meta.coins,levelKills=0,overMsg='',pDi
 let guards=3,rapidT=0,mode='campaign';
 let rewindT=0,rewDur=0,rewindPlayer=null,rewindList=[];
 let mods,bought;
+let winTitle='',winSub='',celeb=[];             // 胜利庆典
 
 function newPlayer(type){
   const t=TANK_TYPES[type];
@@ -746,23 +750,45 @@ function resolveOverlaps(){
     }
   });
 }
+function survivalMilestone(w){
+  let bonus=0,msg='';
+  if(w===5){bonus=200;msg=' 🏅 生存 5 天奖励 +200'}
+  else if(w===10){bonus=500;msg=' 🏅 生存 10 天奖励 +500'}
+  else if(w===20){bonus=2000;msg=' 🏆 生存 20 天！+2000 金币 · 永久「黄金徽章」'}
+  if(w===20&&!meta.buff){meta.buff=true;saveMeta()}
+  return {bonus,msg};
+}
+function winGame(title,sub){
+  winTitle=title;winSub=sub;
+  state='win';S.fanfare();startCeleb();
+}
+function startCeleb(){
+  celeb=[];
+  for(let i=0;i<160;i++)celeb.push({
+    x:Math.random()*960,y:-20-Math.random()*620,vx:(Math.random()-.5)*2.2,vy:1.6+Math.random()*3.2,
+    color:CELEB_COLORS[i%CELEB_COLORS.length],w:6+Math.random()*7,h:9+Math.random()*9,
+    rot:Math.random()*6.28,vr:(Math.random()-.5)*.32});
+}
 function checkLevelEnd(){
   if(state!=='playing')return;
   if(foesTotal===0&&enemies.length===0&&(!boss||boss.dead)){
-    if(mode==='campaign'&&level>=CAMPAIGN_LEVELS){state='win';S.win()}
+    if(mode==='campaign'&&level>=CAMPAIGN_LEVELS){
+      winGame('🏆 全部通关！','15 关征服者 · 营地在你的守护下安然无恙！');
+    }
+    else if(mode==='survival'&&level>=SURVIVAL_MAX){
+      const ms=survivalMilestone(20);
+      gainCoins(Math.round(ms.bonus*goldMul()));
+      winGame('🏆 生存大师！','20 天全部通关 '+ms.msg.trim()+'，敌军闻风丧胆！');
+    }
     else onLevelClear();
   }
 }
 function onLevelClear(){
   let reward,extra='';
   if(mode==='survival'){
-    let base=30+level*20,bonus=0;
-    if(level===5){bonus=200;extra=' 🏅 生存 5 天奖励 +200'}
-    else if(level===10){bonus=500;extra=' 🏅 生存 10 天奖励 +500'}
-    else if(level===20){bonus=2000;extra=' 🏆 生存 20 天！+2000 金币 · 解锁永久「黄金徽章」'}
-    if(level===20&&!meta.buff){meta.buff=true;saveMeta()}
-    reward=Math.round((base+bonus)*goldMul());
-    if(bonus)extra+='（已计 15% 增益）';
+    const ms=survivalMilestone(level);
+    reward=Math.round((30+level*20+ms.bonus)*goldMul());
+    extra=ms.msg;
   }else{
     reward=Math.round((100+level*20+lives*20)*goldMul());
   }
@@ -920,7 +946,7 @@ function step(){
           if(--lives<=0)gameOver()
           else{const sp=findSpawn();player.x=sp.x;player.y=sp.y;player.dir='up';player.hp=player.maxHp;player.invT=120}
         }else{
-          S.hit();addShake(5);player.invT=45;
+          S.hit();addShake(5);player.invT=30;   // 受击无敌 0.5 秒（30 帧）
           parts.push({x:b.x,y:b.y,vx:0,vy:0,life:8,muzzle:true});
           addFloat(player.x+17,player.y-6,'-1 血量','#ff7a6e');
         }
@@ -1112,18 +1138,38 @@ function draw(){
     const msg={
       ready:cfg&&cfg.boss?'⚠️ '+lvLabel+' · BOSS 战':lvLabel,
       rewind:'🕒 时间倒流！',
-      win:'🏆 全部通关！',
+      win:winTitle||'🏆 通关！',
       over:'💥 游戏结束'
     }[state];
     CX.fillText(msg,480,262);
     CX.font='17px "Microsoft YaHei"';CX.fillStyle='#e8f1ed';
     if(state==='ready')CX.fillText(cfg&&cfg.boss?'击毁巨型坦克！按 回车 出击':'按 回车 出击（敌军 '+cfg.total+' 辆）',480,310);
     if(state==='rewind')CX.fillText('守护剩余 '+guards+' 次 · 坦克缓缓回退原位',480,310);
-    if(state==='win')CX.fillText('最终得分：'+score+' · 金币：'+coins+'，按 回车 返回主界面',480,310);
+    if(state==='win'){
+      CX.fillText(winSub,480,310);
+      CX.fillText('最终得分：'+score+' · 金币：'+coins+'，按 回车 返回主界面',480,344);
+    }
     if(state==='over'){
       CX.fillText(overMsg,480,310);
       CX.fillText('得分：'+score+'，按 回车 返回主界面',480,344);
     }
+  }
+  // 胜利庆典：五彩纸屑 + 烟花
+  if(state==='win'){
+    celeb.forEach(c=>{c.x+=c.vx;c.y+=c.vy;c.rot+=c.vr;
+      if(c.y>620){c.y=-10-Math.random()*20;c.x=Math.random()*960}});
+    celeb.forEach(c=>{
+      CX.save();CX.translate(c.x,c.y);CX.rotate(c.rot);
+      CX.fillStyle=c.color;CX.globalAlpha=.95;
+      CX.fillRect(-c.w/2,-c.h/2,c.w,c.h);CX.globalAlpha=1;CX.restore();
+    });
+    // 中央大标题脉冲
+    const sc=1+Math.sin(Date.now()/180)*0.06;
+    CX.save();CX.translate(480,150);CX.scale(sc,sc);
+    CX.shadowColor='#ffd666';CX.shadowBlur=30;
+    CX.fillStyle='#ffd666';CX.font='bold 52px "Microsoft YaHei"';CX.textAlign='center';
+    CX.fillText(winTitle||'🏆',0,0);
+    CX.restore();
   }
 }
 function loop(){step();draw();requestAnimationFrame(loop)}
@@ -1135,13 +1181,20 @@ function advance(){
   else if(state==='shop')nextLevel();
   else if(state==='over'||state==='win'){document.getElementById('selectPanel').classList.add('hide');showMenu()}
 }
-document.getElementById('rulesOk').addEventListener('click',advance);
+document.getElementById('rulesOk').addEventListener('click',()=>{
+  document.getElementById('rulesPanel').classList.add('hide');
+  showMenu();
+});
 document.getElementById('shopNext').addEventListener('click',advance);
 document.getElementById('btnCampaign').addEventListener('click',()=>{document.getElementById('menuPanel').classList.add('hide');showSelect('campaign')});
 document.getElementById('btnSurvival').addEventListener('click',()=>{document.getElementById('menuPanel').classList.add('hide');showSelect('survival')});
 document.getElementById('btnUpgrade').addEventListener('click',()=>{document.getElementById('menuPanel').classList.add('hide');document.getElementById('upgradePanel').classList.remove('hide');renderUpgrade()});
 document.getElementById('btnUpBack').addEventListener('click',()=>{document.getElementById('upgradePanel').classList.add('hide');showMenu()});
-document.getElementById('btnRules').addEventListener('click',()=>{document.getElementById('menuPanel').classList.add('hide');document.getElementById('rulesPanel').classList.remove('hide')});
+document.getElementById('btnRules').addEventListener('click',()=>{
+  state='rules';
+  document.getElementById('menuPanel').classList.add('hide');
+  document.getElementById('rulesPanel').classList.remove('hide');
+});
 
 /* ================= 输入 ================= */
 const KEYMAP={KeyW:'up',ArrowUp:'up',KeyS:'down',ArrowDown:'down',
