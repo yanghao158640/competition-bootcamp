@@ -41,10 +41,11 @@
   .tips{font-size:13px;color:#9db4ab;text-align:center;line-height:1.9}
   kbd{background:#1c2b26;border:1px solid #2a3d35;border-radius:6px;
     padding:1px 8px;font-size:12px;color:#2fd397}
-  /* ---------- 通用面板 ---------- */
-  .panel{position:absolute;inset:0;z-index:50;border-radius:12px;
+  /* ---------- 通用面板（fixed 全屏覆盖，手机购买/升级也能看清） ---------- */
+  .panel{position:fixed;inset:0;z-index:50;border-radius:0;
     display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;
-    background:rgba(5,12,10,.9);backdrop-filter:blur(4px);padding:20px}
+    background:rgba(5,12,10,.94);backdrop-filter:blur(4px);padding:16px;
+    overflow-y:auto}
   .panel h2{font-size:22px;letter-spacing:4px;color:#2fd397}
   .panel .sub{font-size:13px;color:#9db4ab;text-align:center;line-height:1.7}
   .panel .coins{font-size:16px;color:#ffd666}
@@ -77,7 +78,7 @@
   .tk .key{margin-top:10px;font-size:11px;color:#5a6f68}
   /* ---------- 商店 / 升级 ---------- */
   .goods{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:10px;max-width:720px;width:100%;max-height:46%;overflow-y:auto;padding:2px}
+    gap:10px;max-width:760px;width:100%;max-height:60vh;overflow-y:auto;padding:2px 6px}
   .good{background:#182420;border:1px solid #2a3d35;border-radius:12px;
     padding:12px 10px;text-align:center;cursor:pointer;transition:.15s;color:#e8f1ed}
   .good:hover:not(.off){border-color:#2fd397;transform:translateY(-2px)}
@@ -117,6 +118,12 @@
     .hud b{font-size:14px;margin-left:3px}
     canvas{max-width:100vw;border-radius:8px}
     .tips{font-size:11px;line-height:1.6;max-width:94vw}
+    .goods{grid-template-columns:1fr;max-height:64vh;gap:9px}
+    .good{padding:14px 16px;text-align:left}
+    .good h4{font-size:16px}
+    .good p{font-size:13px}
+    .good .cost{font-size:14px}
+    .good svg{width:24px;height:24px}
   }
   @media (max-width:420px){
     .hud{gap:6px;font-size:11px}
@@ -148,8 +155,8 @@
     <h2>坦克大战 YYH</h2>
     <div class="sub">守住营地 🏫，歼灭敌军 · 金币全局累计，输了也能永久变强</div>
     <div class="coins">🪙 我的金币：<b id="menuCoins">0</b></div>
-    <button class="menuBtn" id="btnCampaign">⚔️ 闯关模式<span class="tag">15 关 · 每 4 关一个 BOSS</span></button>
-    <button class="menuBtn" id="btnSurvival">♾️ 生存模式<span class="tag">最高 20 天 · 生存越久金币越多 · 通关解锁永久 buff</span></button>
+    <button class="menuBtn" id="btnCampaign">⚔️ 闯关模式<span class="tag">8 关 · 每 4 关一个 BOSS</span></button>
+    <button class="menuBtn" id="btnSurvival">♾️ 生存模式<span class="tag">最高 10 天 · 生存越久金币越多 · 通关解锁永久 buff</span></button>
     <button class="menuBtn" id="btnUpgrade">🔧 永久升级<span class="tag">用金币永久强化坦克与营地</span></button>
     <button class="menuBtn small" id="btnRules">📖 游戏规则</button>
   </div>
@@ -172,11 +179,11 @@
       <li>❤️ <b>我方血量</b>：每条命 3 发，共 3 条生命；受击后 0.5 秒无敌；每关开始生命重置</li>
       <li>🕹️ <b>操作</b>：WASD / 方向键移动，空格开炮（手机用屏幕虚拟按键）</li>
       <li>🤖 <b>敌军</b>：从顶部三个出生门传送入场；多数打营地，头带红标的「猎手」追杀你</li>
-      <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 / 12 / 15 关单挑巨型坦克，击毁大量金币</li>
+      <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 关单挑巨型坦克，击毁大量金币</li>
       <li>🎁 <b>道具</b>：⭐火力 🔧修理 🛡️无敌 ❄️冻结 💣爆破 🪙金币 ❤️加命 ⚡速射</li>
       <li>🛒 <b>商店</b>：每关通关后可用金币强化（本局内生效）</li>
       <li>🔧 <b>永久升级</b>：主界面的永久升级对所有模式生效，输了金币仍在</li>
-      <li>♾️ <b>生存模式</b>：最高 20 天，越后越难金币越多；5 天 +200、10 天 +500、20 天 +2000 并解锁永久 buff「黄金徽章」</li>
+      <li>♾️ <b>生存模式</b>：最高 10 天（无 BOSS），越后越难金币越多；5 天 +200、10 天 +500 并解锁永久 buff「黄金徽章」</li>
       <li>🕒 <b>守护·时间倒流</b>：营地 3 次守护，失守时时间暂停、敌军回退、营地满血</li>
     </ul>
     <button class="pri" id="rulesOk">返回主界面</button>
@@ -240,8 +247,8 @@ const EMPTY=0,BRICK=1,STEEL=2;
 const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 const ENEMY_DIRS=['up','down','left','right'];
 const BASE_DEFAULT_HP=7;                       // 营地初始耐久：7 发炮弹
-const CAMPAIGN_LEVELS=15;                      // 闯关模式 15 关
-const SURVIVAL_MAX=20;                         // 生存模式最高 20 天
+const CAMPAIGN_LEVELS=8;                       // 闯关模式 8 关
+const SURVIVAL_MAX=10;                         // 生存模式最高 10 天
 
 /* ================= 永久进度（localStorage 持久化） ================= */
 const LS=(typeof localStorage!=='undefined')?localStorage:null;
@@ -281,17 +288,10 @@ const LEVELS=[
   {total:8, alive:4,mix:['basic','basic','fast'],        rate:1.08},
   {total:10,alive:4,mix:['basic','fast','armor'],        rate:1.16},
   {total:0, alive:0,mix:[],rate:1.15,boss:true,bossHp:20,bossSp:0.8},
-  {total:12,alive:5,mix:['fast','basic','armor','armor'],rate:1.24},
-  {total:12,alive:5,mix:['fast','armor','armor'],        rate:1.30},
-  {total:14,alive:5,mix:['armor','fast','armor','fast'], rate:1.36},
-  {total:0, alive:0,mix:[],rate:1.30,boss:true,bossHp:28,bossSp:0.9},
-  {total:14,alive:6,mix:['armor','fast','armor','fast'], rate:1.42},
-  {total:16,alive:6,mix:['armor','fast','armor','armor'],rate:1.48},
-  {total:16,alive:6,mix:['fast','fast','armor','armor'], rate:1.54},
-  {total:0, alive:0,mix:[],rate:1.40,boss:true,bossHp:34,bossSp:1.0},
-  {total:18,alive:6,mix:['armor','fast','armor','fast'], rate:1.60},
-  {total:18,alive:6,mix:['armor','armor','fast','fast'], rate:1.66},
-  {total:0, alive:0,mix:[],rate:1.50,boss:true,bossHp:40,bossSp:1.1}
+  {total:12,alive:5,mix:['fast','basic','armor','armor'],rate:1.26},
+  {total:12,alive:5,mix:['fast','armor','armor'],        rate:1.34},
+  {total:14,alive:5,mix:['armor','fast','armor','fast'], rate:1.42},
+  {total:0, alive:0,mix:[],rate:1.40,boss:true,bossHp:35,bossSp:1.0}
 ];
 /* 每关额外障碍（YYH 中央布局保持不变，只调整外围） */
 const LEVEL_WALLS=[
@@ -742,17 +742,24 @@ function startRewind(){
   state='rewind';rewindT=0;rewDur=100;
   S.timeStop();addShake(12);
   rewindPlayer={x:player.x,y:player.y};
-  rewindList=[];
-  // 敌军分别回退到不同出生门并加随机抖动，避免回退后卡在一起
-  enemies.forEach((e,i)=>{
-    const gi=i%GATES.length;
-    rewindList.push({e,fx:e.x,fy:e.y,
-      tx:GATES[gi][0]*CELL+3+(Math.random()*10-5),ty:GATES[gi][1]*CELL+3+(Math.random()*6-3)});
-  });
-  if(boss&&!boss.dead)rewindList.push({e:boss,fx:boss.x,fy:boss.y,tx:11*CELL+4,ty:CELL});
   bullets=[];freezeT=0;
   map=buildMap(level);computeDist();computePlayerDist();   // 砖墙/障碍倒流回本关初始态
   baseHp=baseMaxHp;player.hp=player.maxHp;player.shieldT=0;
+  // 收集顶部出生门附近的空位，给每辆敌军分配独立目标，避免回退后堆叠卡死
+  const free=[];
+  for(const gi of [0,1,2]){
+    const [gc,gr]=GATES[gi];
+    for(const [dc,dr] of [[0,0],[0,1],[-1,1],[1,1],[0,2],[-1,0],[1,0]]){
+      const c=gc+dc,r=gr+dr;
+      if(c>=0&&r>=0&&c<COLS&&r<ROWS&&map[r][c]===EMPTY)free.push([c,r]);
+    }
+  }
+  rewindList=[];
+  enemies.forEach((e,i)=>{
+    const t=free[i%free.length]||GATES[0];
+    rewindList.push({e,fx:e.x,fy:e.y,tx:t[0]*CELL+3,ty:t[1]*CELL+3});
+  });
+  if(boss&&!boss.dead)rewindList.push({e:boss,fx:boss.x,fy:boss.y,tx:11*CELL+4,ty:CELL});
   syncHud();
 }
 function rewindUpdate(){
@@ -768,27 +775,38 @@ function rewindUpdate(){
   }
 }
 function rectOverlap(a,b,s){return a.x<b.x+s&&a.x+s>b.x&&a.y<b.y+s&&a.y+s>b.y}
+function pushApart(t,s){
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+    const nx=t.x+dx*CELL,ny=t.y+dy*CELL;
+    if(!rectHitsWall(nx,ny,s)&&!hitsOtherTank(t,nx,ny,s)){t.x=nx;t.y=ny;return true}
+  }
+  return false;
+}
 function resolveOverlaps(){
   const s=CELL-6;
-  enemies.forEach(e=>{
-    if(e.spawnT>0||!rectOverlap(e,player,s))return;
-    let placed=false;
-    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-      const nx=e.x+dx*CELL,ny=e.y+dy*CELL;
-      if(!rectHitsWall(nx,ny,s)&&!hitsOtherTank(e,nx,ny,s)){e.x=nx;e.y=ny;placed=true;break}
+  for(let iter=0;iter<8;iter++){                 // 多轮迭代，处理链式重叠
+    let moved=false;
+    // 敌军 vs 玩家
+    for(const e of enemies){
+      if(e.spawnT>0)continue;
+      if(rectOverlap(e,player,s)&&pushApart(e,s))moved=true;
     }
-    if(!placed){
-      if(Math.abs(e.x-player.x)<Math.abs(e.y-player.y))e.x=player.x+(e.x>=player.x?s:-s);
-      else e.y=player.y+(e.y>=player.y?s:-s);
+    // 敌军 vs 敌军（此前缺失，导致回退后挤在一起动不了）
+    for(let i=0;i<enemies.length;i++){
+      const a=enemies[i];if(a.spawnT>0)continue;
+      for(let j=i+1;j<enemies.length;j++){
+        const b=enemies[j];if(b.spawnT>0)continue;
+        if(rectOverlap(a,b,s)){if(pushApart(a,s)||pushApart(b,s))moved=true}
+      }
     }
-  });
+    if(!moved)break;
+  }
 }
 function survivalMilestone(w){
   let bonus=0,msg='';
   if(w===5){bonus=200;msg=' 🏅 生存 5 天奖励 +200'}
-  else if(w===10){bonus=500;msg=' 🏅 生存 10 天奖励 +500'}
-  else if(w===20){bonus=2000;msg=' 🏆 生存 20 天！+2000 金币 · 永久「黄金徽章」'}
-  if(w===20&&!meta.buff){meta.buff=true;saveMeta()}
+  else if(w===10){bonus=500;msg=' 🏆 生存 10 天通关！+500 金币 · 永久「黄金徽章」'}
+  if(w===10&&!meta.buff){meta.buff=true;saveMeta()}
   return {bonus,msg};
 }
 function winGame(title,sub){
@@ -809,9 +827,9 @@ function checkLevelEnd(){
       winGame('🏆 全部通关！','15 关征服者 · 营地在你的守护下安然无恙！');
     }
     else if(mode==='survival'&&level>=SURVIVAL_MAX){
-      const ms=survivalMilestone(20);
+      const ms=survivalMilestone(SURVIVAL_MAX);
       gainCoins(Math.round(ms.bonus*goldMul()));
-      winGame('🏆 生存大师！','20 天全部通关 '+ms.msg.trim()+'，敌军闻风丧胆！');
+      winGame('🏆 生存大师！','10 天全部通关 '+ms.msg.trim()+'，敌军闻风丧胆！');
     }
     else onLevelClear();
   }
@@ -820,10 +838,10 @@ function onLevelClear(){
   let reward,extra='';
   if(mode==='survival'){
     const ms=survivalMilestone(level);
-    reward=Math.round((30+level*20+ms.bonus)*goldMul());
+    reward=Math.round((40+level*30+ms.bonus)*goldMul());   // 生存金币随天数递增
     extra=ms.msg;
   }else{
-    reward=Math.round((100+level*20+lives*20)*goldMul());
+    reward=Math.round((80+level*50+lives*30)*goldMul());   // 闯关金币随关卡递增
   }
   gainCoins(reward);
   const praise=PRAISES[Math.floor(Math.random()*PRAISES.length)];
