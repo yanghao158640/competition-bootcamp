@@ -121,8 +121,8 @@
       <li>🏫 <b>营地耐久</b>：最多承受 <b>7 发</b>炮弹（每局重置），耐久归零立即失败；每过一关自动修复 +2</li>
       <li>❤️ <b>我方血量</b>：每条命可扛 <b>3 发</b>炮弹，共 3 条生命；每关开始生命重置为 3 条</li>
       <li>🕹️ <b>操作</b>：WASD / 方向键移动，空格开炮（手机端使用屏幕虚拟按键）</li>
-      <li>🤖 <b>敌军</b>：会主动寻路进攻我方营地，还会炮轰挡路的砖墙开路——优先拦截逼近营地的敌人</li>
-      <li>👹 <b>BOSS</b>：巨型坦克，血量厚、三连发炮弹、能直接撞碎砖墙，击毁奖励大量金币</li>
+      <li>🤖 <b>敌军</b>：从顶部三个<b>出生门</b>传送入场——多数寻路进攻营地，头带红色标记的<b>猎手</b>会主动追杀你的坦克，都会拆墙开路</li>
+      <li>👹 <b>BOSS 单挑</b>：第 4、8 关只有一辆巨型坦克——血量厚、三连发炮弹、能直接撞碎砖墙，击毁奖励大量金币</li>
       <li>🎁 <b>随机道具</b>：⭐火力 / 🔧修营地 / 🛡️无敌 / ❄️冻结敌军 / 💣清屏 / 🪙金币，走过去即可拾取</li>
       <li>🛒 <b>商店</b>：每关通关获得金币，可在通关后的商店中强化营地或坦克</li>
     </ul>
@@ -201,11 +201,11 @@ const LEVELS=[
   {total:6, alive:3,mix:['basic','basic','basic'],       rate:1.00},
   {total:8, alive:4,mix:['basic','basic','fast'],        rate:1.10},
   {total:10,alive:4,mix:['basic','fast','armor'],        rate:1.20},
-  {total:4, alive:2,mix:['basic','fast'],rate:1.15,boss:true,bossHp:20,bossSp:0.8},   // BOSS ①
+  {total:0, alive:0,mix:[],rate:1.15,boss:true,bossHp:20,bossSp:0.8},   // BOSS ①（单挑，无小兵）
   {total:12,alive:5,mix:['fast','basic','armor','armor'],rate:1.32},
   {total:12,alive:5,mix:['fast','armor','armor'],        rate:1.40},
   {total:14,alive:5,mix:['armor','fast','armor','fast'], rate:1.50},
-  {total:6, alive:3,mix:['fast','armor'],rate:1.45,boss:true,bossHp:35,bossSp:1.0}    // 最终 BOSS
+  {total:0, alive:0,mix:[],rate:1.45,boss:true,bossHp:35,bossSp:1.0}    // 最终 BOSS（单挑，无小兵）
 ];
 /* 每关额外障碍（YYH 中央布局保持不变，只调整外围；适配 24 列横版地图） */
 const LEVEL_WALLS=[
@@ -226,14 +226,14 @@ const LEVEL_WALLS=[
   {steel:[[4,3],[19,3],[4,10],[19,10],[11,2],[12,2]],
    brick:[[3,6],[4,6],[19,6],[20,6]]}
 ];
-/* ================= 道具类型 ================= */
+/* ================= 道具类型（badge 徽章式图标 + 两字作用标签） ================= */
 const ITEM_TYPES={
-  star:  {ico:'⭐',label:'火力 +1'},
-  repair:{ico:'🔧',label:'营地修理 +2'},
-  shield:{ico:'🛡️',label:'无敌 6 秒'},
-  freeze:{ico:'❄️',label:'冻结敌军 5 秒'},
-  bomb:  {ico:'💣',label:'全屏爆破'},
-  coin:  {ico:'🪙',label:'金币 +80'}
+  star:  {ico:'⭐',label:'火力',c1:'#ffd666',c2:'#b8860b'},
+  repair:{ico:'🔧',label:'修理',c1:'#5eead4',c2:'#0e9f6e'},
+  shield:{ico:'🛡️',label:'无敌',c1:'#7dd3fc',c2:'#0b7fab'},
+  freeze:{ico:'❄️',label:'冻结',c1:'#e0f2fe',c2:'#38bdf8'},
+  bomb:  {ico:'💣',label:'爆破',c1:'#fca5a5',c2:'#dc2626'},
+  coin:  {ico:'🪙',label:'金币',c1:'#fde68a',c2:'#d97706'}
 };
 const ITEM_KEYS=Object.keys(ITEM_TYPES);
 /* ================= 商店商品 ================= */
@@ -341,7 +341,7 @@ const S={
 
 /* ================= 游戏状态 ================= */
 let player,enemies,bullets,parts,rings,floats,items,keys,state,score,lives,foesTotal,spawnTimer,level,shake;
-let boss=null,freezeT=0,itemTimer=0,coins=0,levelKills=0,overMsg='';
+let boss=null,freezeT=0,itemTimer=0,coins=0,levelKills=0,overMsg='',pDistTimer=0;
 let mods,bought;                               // 本局强化 / 已购商品
 
 function newPlayer(type){
@@ -363,7 +363,7 @@ function setupLevel(){
   map=buildMap(level);
   steelWallNext=false;                          // 钢墙护营为一次性消耗
   enemies=[];bullets=[];parts=[];rings=[];floats=[];items=[];shake=0;
-  freezeT=0;levelKills=0;itemTimer=600;
+  freezeT=0;levelKills=0;itemTimer=600;pDistTimer=0;gateFlash=[0,0,0];
   const cfg=LEVELS[level-1];
   foesTotal=cfg.total;spawnTimer=30;
   boss=null;
@@ -373,7 +373,7 @@ function setupLevel(){
     S.boss();
   }
   player.x=3*CELL;player.y=12*CELL;player.dir='up';player.invT=90;player.hp=player.maxHp;
-  computeDist();
+  computeDist();computePlayerDist();
 }
 function nextLevel(){
   level++;
@@ -486,20 +486,46 @@ function applyItem(type){
   syncHud();checkLevelEnd();
 }
 
-/* ================= 敌军生成与 AI（目标：我方营地） ================= */
+/* ================= 敌军生成与 AI（目标：我方营地 / 猎杀玩家） ================= */
+const GATES=[[1,1],[11,1],[22,1]];             // 三个出生门
+let gateFlash=[0,0,0];                          // 出生门闪光计时
 function spawnEnemy(){
   const cfg=LEVELS[level-1];
-  const spots=[[1,1],[11,1],[22,1]];
-  const [c,r]=spots[Math.floor(Math.random()*spots.length)];
+  const gi=Math.floor(Math.random()*GATES.length);
+  const [c,r]=GATES[gi];
   const x=c*CELL+3,y=r*CELL+3;
   if(rectHitsWall(x,y,CELL-6))return;
   if(enemies.some(e=>Math.abs(e.x-x)<CELL&&Math.abs(e.y-y)<CELL))return;
   const kind=cfg.mix[Math.floor(Math.random()*cfg.mix.length)];
   const ft=FOE_TYPES[kind];
-  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,
+  // 猎手概率：部分敌军直接猎杀玩家（快速车最凶），同时存活猎手≤2 控难度
+  const hunterP={basic:.2,fast:.45,armor:.25}[kind];
+  const hunters=enemies.filter(e=>e.hunter).length;
+  const hunter=Math.random()<hunterP&&hunters<2;
+  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,hunter,spawnT:24,
     hp:ft.hp,sp:ft.sp*cfg.rate,color:ft.color,score:ft.score,hitT:0});
+  gateFlash[gi]=18;
   foesTotal--;syncHud();
 }
+/* ================= 猎手寻路：以玩家为目标的距离场 ================= */
+let pdist=[];
+function computePlayerDist(){
+  pdist=Array.from({length:ROWS},()=>Array(COLS).fill(1e9));
+  const c=Math.floor((player.x+17)/CELL),r=Math.floor((player.y+17)/CELL);
+  if(c<0||r<0||c>=COLS||r>=ROWS)return;
+  pdist[r][c]=0;const queue=[[c,r]];
+  while(queue.length){
+    const [cc,rr]=queue.shift();
+    for(const [dc,dr] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nc=cc+dc,nr=rr+dr;
+      if(nc<0||nr<0||nc>=COLS||nr>=ROWS)continue;
+      if(map[nr][nc]===STEEL)continue;
+      const w=map[nr][nc]===BRICK?6:1;
+      if(pdist[rr][cc]+w<pdist[nr][nc]){pdist[nr][nc]=pdist[rr][cc]+w;queue.push([nc,nr])}
+    }
+  }
+}
+
 function clearShotToBase(e){
   const cx=e.x+17;
   if(cx<BASE.x-8||cx>BASE.x+BASE.w+8)return false;
@@ -531,15 +557,18 @@ function brickAhead(e){
   return r>=0&&c>=0&&r<ROWS&&c<COLS&&map[r][c]===BRICK;
 }
 function enemyThink(e){
+  if(e.spawnT>0){e.spawnT--;return}             // 出生动画期间不行动
   if(e.hitT>0)e.hitT--;
   if(--e.ai<=0){
     e.ai=26+Math.random()*36;
+    // 猎手追玩家距离场，其余沿营地距离场推进
+    const field=e.hunter?pdist:dist;
     const c=Math.floor((e.x+17)/CELL),r=Math.floor((e.y+17)/CELL);
-    let best=null,bd=(dist[r]&&dist[r][c])||1e9;
+    let best=null,bd=(field[r]&&field[r][c])||1e9;
     for(const d of ENEMY_DIRS){
       const [dc,dr]=DIRS[d],nc=c+dc,nr=r+dr;
       if(nc<0||nr<0||nc>=COLS||nr>=ROWS)continue;
-      if(dist[nr][nc]<bd){bd=dist[nr][nc];best=d}
+      if(field[nr][nc]<bd){bd=field[nr][nc];best=d}
     }
     e.dir=(best&&Math.random()<.85)?best:ENEMY_DIRS[Math.floor(Math.random()*4)];
   }
@@ -549,7 +578,7 @@ function enemyThink(e){
   const stuck=(ox===e.x&&oy===e.y);
   if(clearShotToBase(e)||clearShotToPlayer(e)){fire(e,false)}
   else if(stuck){e.ai=0;if(brickAhead(e))fire(e,false)}   // 拆墙开路
-  else if(Math.random()<.012)fire(e,false);
+  else if(Math.random()<(e.hunter?.018:.012))fire(e,false);
 }
 /* ================= BOSS ================= */
 function bossThink(){
@@ -669,6 +698,8 @@ function step(){
   // 敌军补充与行动（❄️ 冻结时全体暂停）
   const cfg=LEVELS[level-1];
   if(--spawnTimer<=0&&enemies.length<cfg.alive&&foesTotal>0){spawnTimer=Math.round(90/cfg.rate);spawnEnemy()}
+  for(let gi=0;gi<3;gi++)if(gateFlash[gi]>0)gateFlash[gi]--;
+  if(--pDistTimer<=0){pDistTimer=45;computePlayerDist()}   // 猎手寻路场定时刷新
   if(freezeT>0){freezeT--}
   else{
     enemies.forEach(enemyThink);
@@ -768,15 +799,64 @@ function step(){
 
 /* ================= 绘制 ================= */
 function drawTank(t,color,flash){
-  const s=t.size||(CELL-6);CX.save();CX.translate(t.x+s/2,t.y+s/2);
+  const s=t.size||(CELL-6);
+  CX.save();CX.translate(t.x+s/2,t.y+s/2);
   CX.rotate({up:0,right:Math.PI/2,down:Math.PI,left:-Math.PI/2}[t.dir]);
+  const u=s/34;                                  // 细节缩放单位
+  // —— 履带（深色 + 齿纹）——
+  CX.fillStyle=flash?'#e5e5e5':'#1c2120';
+  CX.fillRect(-s/2,-s/2+2*u,7*u,s-4*u);
+  CX.fillRect(s/2-7*u,-s/2+2*u,7*u,s-4*u);
+  CX.fillStyle=flash?'#fff':'#3a4441';
+  for(let i=0;i<5;i++){
+    const ty=-s/2+4.5*u+i*(s-9*u)/4;
+    CX.fillRect(-s/2+1.2*u,ty,4.6*u,1.8*u);
+    CX.fillRect(s/2-5.8*u,ty,4.6*u,1.8*u);
+  }
+  // —— 车体（主色 + 前装甲高光 + 铆钉）——
   CX.fillStyle=flash?'#ffffff':color;
-  CX.fillRect(-s/2,-s/2+s/10,s,s-s/5);
-  CX.fillStyle='rgba(0,0,0,.35)';
-  CX.fillRect(-s/2,-s/2+s/10,s/6,s-s/5);CX.fillRect(s/2-s/6,-s/2+s/10,s/6,s-s/5);
-  CX.fillStyle=flash?'#ffffff':color;
-  CX.fillRect(-s/12,-s/2-s/5,s/6,s/2+s/5);
-  CX.fillStyle='rgba(255,255,255,.35)';CX.beginPath();CX.arc(0,0,s/5,0,7);CX.fill();
+  CX.fillRect(-s/2+7*u,-s/2+4*u,s-14*u,s-8*u);
+  CX.fillStyle='rgba(255,255,255,.22)';
+  CX.fillRect(-s/2+7*u,-s/2+4*u,s-14*u,4.5*u);
+  CX.fillStyle='rgba(0,0,0,.25)';
+  CX.fillRect(-s/2+7*u,s/2-8.5*u,s-14*u,4.5*u);
+  CX.fillStyle='rgba(0,0,0,.3)';
+  [[-1,0],[1,0]].forEach(([sx])=>{CX.beginPath();CX.arc(sx*(s/2-11*u),0,1.4*u,0,7);CX.fill()});
+  // —— 炮塔（圆形带描边 + 舱盖）——
+  CX.fillStyle=flash?'#fff':color;
+  CX.beginPath();CX.arc(0,0,8*u,0,7);CX.fill();
+  CX.strokeStyle='rgba(0,0,0,.4)';CX.lineWidth=1.6*u;CX.stroke();
+  CX.fillStyle='rgba(255,255,255,.3)';
+  CX.beginPath();CX.arc(-2*u,-2*u,3*u,0,7);CX.fill();
+  // —— 炮管（BOSS 双管，其余单管带制退器）——
+  CX.fillStyle=flash?'#fff':'#161a19';
+  if(t.size){
+    CX.fillRect(-8.5*u,-s/2-4*u,5*u,s/2+2*u);
+    CX.fillRect(3.5*u,-s/2-4*u,5*u,s/2+2*u);
+    CX.fillRect(-9.5*u,-s/2-5*u,7*u,3*u);
+    CX.fillRect(2.5*u,-s/2-5*u,7*u,3*u);
+    // BOSS 附加装甲板
+    CX.fillStyle=flash?'#fff':'#7a1f14';
+    CX.fillRect(-s/2+7*u,-s/2+4*u,s-14*u,3.5*u);
+    CX.fillRect(-s/2+7*u,s/2-7.5*u,s-14*u,3.5*u);
+  }else{
+    CX.fillRect(-2.5*u,-s/2-4*u,5*u,s/2+2*u);
+    CX.fillRect(-3.5*u,-s/2-5*u,7*u,3*u);
+  }
+  // —— 兵种点缀 ——
+  if(t.kind==='fast'){                           // 快速车：侧身黄色竞速条
+    CX.fillStyle='#ffd666';CX.fillRect(-4.5*u,4*u,9*u,2.2*u);
+  }
+  if(t.kind==='armor'){                          // 装甲车：附加反应装甲框
+    CX.strokeStyle='rgba(0,0,0,.45)';CX.lineWidth=2*u;
+    CX.strokeRect(-s/2+9.5*u,-s/2+8.5*u,s-19*u,s-17*u);
+    CX.strokeStyle='rgba(255,255,255,.25)';CX.lineWidth=.8*u;
+    CX.strokeRect(-s/2+11*u,-s/2+10*u,s-22*u,s-20*u);
+  }
+  if(t===player){                                // 我方：白色描边标识
+    CX.strokeStyle='rgba(255,255,255,.55)';CX.lineWidth=1.2*u;
+    CX.strokeRect(-s/2+7*u,-s/2+4*u,s-14*u,s-8*u);
+  }
   CX.restore();
 }
 function draw(){
@@ -798,6 +878,23 @@ function draw(){
       CX.fillStyle='#8fa3b0';CX.fillRect(x+6,y+6,CELL-12,CELL-12);
     }
   }
+  // 敌军出生门（顶部三处，漩涡传送门动效）
+  GATES.forEach(([c,r],gi)=>{
+    const x=c*CELL,y=r*CELL;
+    const pulse=(Math.sin(Date.now()/280+gi*2)+1)/2;
+    const flash=gateFlash[gi]/18;
+    CX.fillStyle='#2a2040';CX.fillRect(x-2,y-2,CELL+4,CELL+4);
+    CX.fillStyle=`rgba(160,106,224,${.3+.25*pulse+.45*flash})`;
+    CX.fillRect(x+3,y+3,CELL-6,CELL-6);
+    CX.strokeStyle=flash>0?'#ffffff':'#a06ae0';
+    CX.lineWidth=2+flash*2;
+    CX.strokeRect(x+3,y+3,CELL-6,CELL-6);
+    CX.save();CX.translate(x+20,y+20);CX.rotate(Date.now()/420+gi);
+    CX.strokeStyle=`rgba(220,190,255,${.5+.4*pulse})`;CX.lineWidth=2.5;
+    CX.beginPath();CX.arc(0,0,9,0,4.2);CX.stroke();
+    CX.beginPath();CX.arc(0,0,4.5,2.1,6.3);CX.stroke();
+    CX.restore();
+  });
   // 「浪尖儿大学生社区」场景标识
   CX.save();
   CX.font='bold 26px "Microsoft YaHei"';CX.textAlign='center';
@@ -805,14 +902,31 @@ function draw(){
   CX.fillStyle='rgba(255,255,255,.5)';
   CX.fillText('浪尖儿大学生社区',480,152);
   CX.restore();
-  // 道具
+  // 道具（徽章式：渐变光圈 + 图标 + 两字作用标签，呼吸脉动）
   items.forEach(it=>{
-    const blink=it.life<180&&Math.floor(it.life/10)%2===0;
-    if(blink)return;
+    if(it.life<180&&Math.floor(it.life/10)%2===0)return;   // 临期闪烁
+    const T=ITEM_TYPES[it.type],cx=it.x+12,cy=it.y+12;
+    const pulse=1+Math.sin(Date.now()/260+cx)*0.08;
+    CX.save();CX.translate(cx,cy);CX.scale(pulse,pulse);
+    // 外发光
+    CX.shadowColor=T.c1;CX.shadowBlur=12;
+    const grd=CX.createRadialGradient(0,-4,2,0,0,16);
+    grd.addColorStop(0,T.c1);grd.addColorStop(1,T.c2);
+    CX.fillStyle=grd;
+    CX.beginPath();CX.arc(0,0,15,0,7);CX.fill();
+    CX.shadowBlur=0;
+    CX.strokeStyle='rgba(255,255,255,.75)';CX.lineWidth=1.6;
+    CX.beginPath();CX.arc(0,0,15,0,7);CX.stroke();
+    // 图标
+    CX.font='14px sans-serif';CX.textAlign='center';
+    CX.fillText(T.ico,0,3);
+    // 两字作用标签
+    CX.font='bold 9px "Microsoft YaHei"';
     CX.fillStyle='rgba(0,0,0,.55)';
-    CX.beginPath();CX.arc(it.x+12,it.y+12,15,0,7);CX.fill();
-    CX.font='19px sans-serif';CX.textAlign='center';
-    CX.fillText(ITEM_TYPES[it.type].ico,it.x+12,it.y+19);
+    CX.fillText(T.label,0,13);
+    CX.fillStyle='#fff';
+    CX.fillText(T.label,-0.6,12.4);
+    CX.restore();
   });
   // 营地（小教学楼 + 耐久血条）
   if(baseHp>0){
@@ -837,7 +951,19 @@ function draw(){
     CX.fillStyle='#ff7a6e';CX.fillRect(player.x+2,player.y-9,30*(player.hp/player.maxHp),5);
   }
   enemies.forEach(e=>{
-    drawTank(e,e.color,e.hitT>0);
+    if(e.spawnT>0){
+      // 出生动画：从门里放大现身
+      const k=Math.max(.1,1-e.spawnT/24);
+      CX.save();CX.translate(e.x+17,e.y+17);CX.scale(k,k);CX.translate(-e.x-17,-e.y-17);
+      CX.globalAlpha=k;drawTank(e,e.color,false);CX.globalAlpha=1;CX.restore();
+    }else{
+      drawTank(e,e.color,e.hitT>0);
+      if(e.hunter){                                // 猎手标记：头顶红色准星
+        CX.fillStyle='#ff4d4d';CX.beginPath();
+        CX.moveTo(e.x+17,e.y-8);CX.lineTo(e.x+12,e.y-14);CX.lineTo(e.x+22,e.y-14);
+        CX.closePath();CX.fill();
+      }
+    }
     if(freezeT>0){CX.fillStyle='rgba(154,223,255,.35)';CX.fillRect(e.x-2,e.y-2,CELL-2,CELL-2)}
   });
   // BOSS + 血条
