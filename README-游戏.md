@@ -15,8 +15,9 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
 ## 📁 文件结构
 
 ```
-├── tank-game.html    坦克大战（Canvas 实现，双击即可离线运行）
-├── bg.jpg            底图素材：浪尖儿大学生社区学员手册（底图加分）
+├── tank-game.html    坦克大战（Canvas 实现，双击即可离线运行，默认深色封面）
+├── 浪尖.html         坦克大战「浪尖儿社区」底图版（备份，含社区素材底图）
+├── bg.jpg            底图素材：浪尖儿大学生社区学员手册（供 浪尖.html 使用）
 ├── lucide.js         商店界面图标库（项目自托管，仓库现有资源）
 └── README.md         本说明文档（文末附 tank-game.html 完整源代码）
 ```
@@ -41,7 +42,8 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
 - **打击感**：屏幕震动、枪口火光、爆炸冲击环、命中白闪、击毁飘分、
   WebAudio 合成音效（零素材）；
 - 【身份标识】地图中央砖墙摆成姓名缩写「YYH」+ 画布右下角「杨豫豪 · YYH」水印；
-- 【底图加分】底图采用「浪尖儿大学生社区」学员手册素材，游戏内显示社区名称。
+- 【底图】主版本为深色战场封面；另存「浪尖.html」为浪尖儿社区底图版（含社区素材，
+  可用于获取底图加分，游戏内显示社区名称）。
 
 ## 🗺️ 源代码导读（tank-game.html）
 
@@ -56,7 +58,7 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
 | `spawnItem() / applyItem()` | 道具刷新（定时+击杀掉落）与拾取生效 |
 | `renderShop() / buy()` | 商店渲染（lucide 图标）与购买逻辑 |
 | `step()` | 主循环：移动、炮弹、碰撞、道具、冻结、胜负判定 |
-| `draw()` | 绘制：底图、墙体、社区标识、道具、坦克、BOSS 血条、特效 |
+| `draw()` | 绘制：底图、墙体、道具、坦克、BOSS 血条、特效 |
 | `S.*` | WebAudio 合成音效（开火/爆炸/道具/金币/BOSS/胜负） |
 
 ---
@@ -78,11 +80,10 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
         lucide.js（仓库现有资源），其余素材零外部依赖。
   【身份标识】地图中央砖墙摆成姓名缩写「YYH」，
              画布右下角亦有「杨豫豪 · YYH」水印。
-  【玩法特性】主界面 + 双模式（闯关 15 关 / 生存无尽）/
+  【玩法特性】主界面 + 双模式（闯关 8 关 / 生存 10 天）/
              闯关每 4 关 BOSS / 金币全局持久化（输了也能永久升级）/
              永久升级系统 + 生存里程碑奖励 + 永久「黄金徽章」buff /
              随机道具 / 金币商店 / 守护×3 时间倒流 / 打击感与音效。
-  【底图加分】底图采用「浪尖儿大学生社区」学员手册素材（bg.jpg）。
   ============================================================
 -->
 <style>
@@ -214,7 +215,6 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
 
 <div class="stage">
   <canvas id="game" width="960" height="600"></canvas>
-  <img id="bgimg" src="bg.jpg" alt="" style="display:none">
 
   <!-- 主界面 -->
   <div id="menuPanel" class="panel">
@@ -440,27 +440,23 @@ const BASE={x:11*CELL,y:13*CELL,w:2*CELL,h:CELL};   // 营地（底部中央，�
 let baseHp=BASE_DEFAULT_HP,baseMaxHp=BASE_DEFAULT_HP,steelWallNext=false;
 let map=buildMap(1);
 
-/* ================= 底图：浪尖儿社区素材（bg.jpg，离屏绘制一次） ================= */
+/* ================= 底图：深色战场封面（离屏绘制一次） ================= */
 const BG=document.createElement('canvas');BG.width=CV.width;BG.height=CV.height;
 function drawBackground(){
   const g=BG.getContext('2d');
-  const img=document.getElementById('bgimg');
-  if(img&&img.complete&&img.naturalWidth>0){
-    const s=Math.max(960/img.naturalWidth,600/img.naturalHeight);
-    const w=img.naturalWidth*s,h=img.naturalHeight*s;
-    g.drawImage(img,(960-w)/2,(600-h)/2,w,h);
-    g.fillStyle='rgba(5,12,10,.45)';g.fillRect(0,0,960,600);
-  }else{
-    const grad=g.createLinearGradient(0,0,0,600);
-    grad.addColorStop(0,'#101c17');grad.addColorStop(1,'#0a120e');
-    g.fillStyle=grad;g.fillRect(0,0,960,600);
-  }
+  const grad=g.createLinearGradient(0,0,0,600);
+  grad.addColorStop(0,'#111d18');grad.addColorStop(1,'#08100c');
+  g.fillStyle=grad;g.fillRect(0,0,960,600);
+  // 中央微光晕
+  const glow=g.createRadialGradient(480,300,40,480,300,520);
+  glow.addColorStop(0,'rgba(47,211,151,.10)');glow.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=glow;g.fillRect(0,0,960,600);
+  // 网格
   g.strokeStyle='rgba(255,255,255,.045)';g.lineWidth=1;
   for(let x=0;x<=960;x+=CELL){g.beginPath();g.moveTo(x,0);g.lineTo(x,600);g.stroke()}
   for(let y=0;y<=600;y+=CELL){g.beginPath();g.moveTo(0,y);g.lineTo(960,y);g.stroke()}
 }
 drawBackground();
-try{document.getElementById('bgimg').addEventListener('load',drawBackground)}catch(e){}
 
 /* ================= 音效（WebAudio 合成，无外部素材） ================= */
 let AC=null;
@@ -1159,12 +1155,6 @@ function draw(){
     CX.beginPath();CX.arc(0,0,4.5,2.1,6.3);CX.stroke();
     CX.restore();
   });
-  CX.save();
-  CX.font='bold 26px "Microsoft YaHei"';CX.textAlign='center';
-  CX.shadowColor='rgba(47,211,151,.8)';CX.shadowBlur=14;
-  CX.fillStyle='rgba(255,255,255,.5)';
-  CX.fillText('浪尖儿大学生社区',480,152);
-  CX.restore();
   items.forEach(it=>{
     if(it.life<180&&Math.floor(it.life/10)%2===0)return;
     const T=ITEM_TYPES[it.type],cx=it.x+12,cy=it.y+12;
