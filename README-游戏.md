@@ -175,8 +175,18 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
     .pad{display:flex}
     .tips .pc{display:none}
   }
-  @media (max-width:600px) and (orientation:portrait){
-    .rotateHint{display:block}
+  /* ---------- 竖屏/小屏自适应：自动缩放画布、紧凑排版，无需强制横屏 ---------- */
+  @media (max-width:820px){
+    body{gap:8px;padding:8px}
+    h1{font-size:18px;letter-spacing:2px}
+    .hud{gap:8px;font-size:12px}
+    .hud b{font-size:14px;margin-left:3px}
+    canvas{max-width:100vw;border-radius:8px}
+    .tips{font-size:11px;line-height:1.6;max-width:94vw}
+  }
+  @media (max-width:420px){
+    .hud{gap:6px;font-size:11px}
+    .hud b{font-size:13px}
   }
 </style>
 </head>
@@ -276,7 +286,7 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
   <span class="pc">移动：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向键 &nbsp;·&nbsp; 开炮：<kbd>空格</kbd> &nbsp;·&nbsp; 确认/继续：<kbd>回车</kbd> &nbsp;·&nbsp; 选坦克：<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span><br>
   拾取场上道具能帮你守住营地；通关记得去商店消费，主界面可永久升级！
 </div>
-<div class="rotateHint">📱 横屏体验更佳，请旋转手机</div>
+<div class="rotateHint">小屏下画布会自动缩放，开启屏幕自动旋转可获更大视野</div>
 <div class="pad" id="pad">
   <div class="dpad">
     <button class="up" data-k="up">▲</button>
