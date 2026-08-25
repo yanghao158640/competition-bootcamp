@@ -407,7 +407,7 @@ const S={
 
 /* ================= 游戏状态 ================= */
 let player,enemies,bullets,parts,rings,floats,items,keys,state,score,lives,foesTotal,spawnTimer,level,shake;
-let boss=null,freezeT=0,itemTimer=0,coins=0,levelKills=0;
+let boss=null,freezeT=0,itemTimer=0,coins=0,levelKills=0,overMsg='';
 let mods,bought;                               // 本局强化 / 已购商品
 
 function newPlayer(type){
@@ -664,6 +664,10 @@ function killBoss(){
 }
 
 /* ================= 关卡结束判定 ================= */
+function gameOver(){
+  overMsg=CHEERS[Math.floor(Math.random()*CHEERS.length)];
+  state='over';S.lose();
+}
 function checkLevelEnd(){
   if(state!=='playing')return;
   if(foesTotal===0&&enemies.length===0&&(!boss||boss.dead)){
@@ -770,7 +774,7 @@ function step(){
       boom(b.x,b.y,true);
       addFloat(BASE.x+40,BASE.y-8,'-1 耐久','#ff7a6e');
       syncHud();
-      if(baseHp<=0){state='over';S.lose()}
+      if(baseHp<=0)gameOver()
       continue;
     }
     const s=CELL-6;
@@ -804,7 +808,7 @@ function step(){
         player.hp--;                                // 先扣血再扣命
         if(player.hp<=0){
           boom(player.x+17,player.y+17,true);
-          if(--lives<=0){state='over';S.lose()}
+          if(--lives<=0)gameOver()
           else{player.x=3*CELL;player.y=12*CELL;player.dir='up';player.hp=player.maxHp;player.invT=120}
         }else{
           S.hit();addShake(5);player.invT=45;
@@ -949,7 +953,7 @@ function draw(){
     if(state==='ready')CX.fillText(cfg&&cfg.boss?'击毁巨型坦克！按 回车 出击':'按 回车 出击（敌军 '+cfg.total+' 辆）',480,310);
     if(state==='win')CX.fillText('最终得分：'+score+' · 金币：'+coins+'，按 回车 再战',480,310);
     if(state==='over'){
-      CX.fillText(CHEERS[Math.floor(Math.random()*CHEERS.length)],480,310);
+      CX.fillText(overMsg,480,310);
       CX.fillText('得分：'+score+'，按 回车 重新选择坦克',480,344);
     }
   }
