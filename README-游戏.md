@@ -27,15 +27,18 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
 - **开局规则确认**：先展示完整规则（目标/耐久/血量/操作/敌军行为/BOSS/道具/商店），
   玩家确认后才开局；
 - **自选坦克**：轻型·猎豹（高机动）/ 标准·战狼（均衡）/ 重型·堡垒（双倍伤害）；
-- **8 个关卡 + BOSS 战**：第 4、8 关为 BOSS 战（巨型坦克：厚血、三连发散射、
-  撞碎砖墙，顶部专属血条）；每关开始生命重置为 3 条、营地修复 +2；
+- **12 个关卡 + BOSS 战**：第 4、8、12 关为 BOSS 战（巨型坦克：厚血、三连发散射、
+  碾碎砖墙，顶部专属血条，最终 BOSS 45 血）；每关开始生命重置为 3 条、营地修复 +2；
+- **BOSS 防卡死**：BOSS 关开局清空出生区（部分地图出生格带钢墙，原会导致出生即卡死）；
+  无更优路线时随机换向、撞墙按车身整排碾砖、长时间卡死则碾掉身周砖强制脱困；
 - **随机道具**：⭐火力+1 / 🔧营地修理 / 🛡️无敌 6 秒 / ❄️冻结敌军 5 秒 /
   💣全屏爆破 / 🪙金币+80——定时刷新 + 击杀 25% 掉落，走过去拾取；
 - **金币商店**：击杀 +10、通关奖励（100 + 关卡×20 + 剩余生命×20），
   可购火力/移速/射速/血量上限/生命/营地加固/钢墙护营（强化营地与坦克）；
 - **守护·时间倒流（3 次）**：营地失守不直接判负，触发时间暂停音效 +
   坦克缓缓回退原位 + 砖墙与营地还原；**每次回溯都有专属台词**
-  （前两次随机：鼓励如"稳住，这局还能翻！"、嘲讽如"敌军：？？？刚才白打了？"），
+  （前两次随机：鼓励如"稳住，这局还能翻！"、纯嘲讽玩家如"就这？营地差点又没了"
+  /"建议把守护键焊死在键盘上"），
   **最后一次为醒目红色警示**"⚠️ 最后一次回溯已用完！下一次失守，时间不会再救你了！"，
   并显示三个守护指示灯（已用完的变灰）；3 次耗尽后失守才判定失败；
 - **通关反馈与失败鼓励**：通关展示击杀数与奖励并附夸奖文案；
@@ -318,8 +321,9 @@ const EMPTY=0,BRICK=1,STEEL=2;
 const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 const ENEMY_DIRS=['up','down','left','right'];
 const BASE_DEFAULT_HP=7;                       // 营地初始耐久：7 发炮弹
-const CAMPAIGN_LEVELS=8;                       // 闯关模式 8 关
+const CAMPAIGN_LEVELS=12;                      // 闯关模式 12 关
 const SURVIVAL_MAX=10;                         // 生存模式最高 10 天
+const BOSS_SPAWN_CLEAR={c0:10,c1:13,r0:1,r1:3};  // BOSS 出生区（清空，避免出生即被墙卡死）
 
 /* ================= 永久进度（localStorage 持久化） ================= */
 const LS=(typeof localStorage!=='undefined')?localStorage:null;
@@ -353,7 +357,7 @@ const FOE_TYPES={
   fast: {hp:1,sp:2.3, color:'#e08a3e',score:150},
   armor:{hp:3,sp:0.95,color:'#a06ae0',score:300}
 };
-/* ================= 闯关关卡配置（15 关，每 4 关 BOSS） ================= */
+/* ================= 闯关关卡配置（12 关，每 4 关 BOSS） ================= */
 const LEVELS=[
   {total:6, alive:3,mix:['basic','basic','basic'],       rate:1.00},
   {total:8, alive:4,mix:['basic','basic','fast'],        rate:1.08},
@@ -362,7 +366,11 @@ const LEVELS=[
   {total:12,alive:5,mix:['fast','basic','armor','armor'],rate:1.26},
   {total:12,alive:5,mix:['fast','armor','armor'],        rate:1.34},
   {total:14,alive:5,mix:['armor','fast','armor','fast'], rate:1.42},
-  {total:0, alive:0,mix:[],rate:1.40,boss:true,bossHp:35,bossSp:1.0}
+  {total:0, alive:0,mix:[],rate:1.30,boss:true,bossHp:35,bossSp:1.0},
+  {total:14,alive:6,mix:['armor','fast','armor','fast'], rate:1.46},
+  {total:16,alive:6,mix:['armor','fast','armor','armor'],rate:1.52},
+  {total:16,alive:6,mix:['fast','fast','armor','armor'], rate:1.58},
+  {total:0, alive:0,mix:[],rate:1.45,boss:true,bossHp:45,bossSp:1.1}
 ];
 /* 每关额外障碍（YYH 中央布局保持不变，只调整外围） */
 const LEVEL_WALLS=[
@@ -427,12 +435,14 @@ const REWIND_MSGS=[
   {t:'稳住，这局还能翻！',c:'#2fd397'},
   {t:'时间就是用来守护营地的！',c:'#2fd397'},
   {t:'再来，这次一定守住！',c:'#2fd397'},
-  {t:'敌军：？？？刚才白打了？',c:'#ffd666'},
-  {t:'敌军表示：这不科学',c:'#ffd666'},
   {t:'就这？营地差点又没了',c:'#ffd666'},
   {t:'你的血压和时间一起倒流了',c:'#ffd666'},
   {t:'这波啊，这波是时间帮你擦屁股',c:'#ffd666'},
-  {t:'敌人：他是不是开挂了？',c:'#ffd666'}
+  {t:'别装了，你就是运气好',c:'#ffd666'},
+  {t:'手速跟不上，只能靠时间倒流？',c:'#ffd666'},
+  {t:'营地说：谢谢你，又白救我一次',c:'#ffd666'},
+  {t:'再想想，这可是你倒数第二次机会',c:'#ffd666'},
+  {t:'建议把守护键焊死在键盘上',c:'#ffd666'}
 ];
 const REWIND_LAST='⚠️ 最后一次回溯已用完！下一次失守，时间不会再救你了！';
 
@@ -541,8 +551,12 @@ function setupLevel(){
   foesTotal=cfg.total;spawnTimer=30;
   boss=null;
   if(cfg.boss){
+    // 清空 BOSS 出生区：第 8 关等地图在出生格上有钢墙，不清会导致 BOSS 出生即卡死
+    for(let r=BOSS_SPAWN_CLEAR.r0;r<=BOSS_SPAWN_CLEAR.r1;r++)
+      for(let c=BOSS_SPAWN_CLEAR.c0;c<=BOSS_SPAWN_CLEAR.c1;c++)
+        map[r][c]=EMPTY;
     boss={x:11*CELL+4,y:CELL,dir:'down',hp:cfg.bossHp,maxHp:cfg.bossHp,
-      size:2*CELL-8,sp:cfg.bossSp,cool:80,ai:0,hitT:0,dead:false};
+      size:2*CELL-8,sp:cfg.bossSp,cool:80,ai:0,hitT:0,stuck:0,dead:false};
     S.boss();
   }
   player.x=3*CELL;player.y=12*CELL;player.dir='up';player.invT=90;player.hp=player.maxHp;
@@ -781,19 +795,22 @@ function bossThink(){
       if(nc<0||nr<0||nc>=COLS||nr>=ROWS)continue;
       if(dist[nr][nc]<bd){bd=dist[nr][nc];best=d}
     }
-    if(best)boss.dir=best;
+    // 没有更优方向时随机换向，避免顶着钢墙一动不动
+    boss.dir=(best&&Math.random()<.9)?best:ENEMY_DIRS[Math.floor(Math.random()*4)];
   }
   const [dx,dy]=DIRS[boss.dir];
   const ox=boss.x,oy=boss.y;
   tankMove(boss,dx*boss.sp,dy*boss.sp);
   if(ox===boss.x&&oy===boss.y){
-    const fc=Math.floor((boss.x+boss.size/2+dx*(boss.size/2+CELL/2))/CELL);
-    const fr=Math.floor((boss.y+boss.size/2+dy*(boss.size/2+CELL/2))/CELL);
-    if(fr>=0&&fc>=0&&fr<ROWS&&fc<COLS&&map[fr][fc]===BRICK){
-      map[fr][fc]=EMPTY;computeDist();boom(fc*CELL+20,fr*CELL+20,false);
+    boss.stuck=(boss.stuck||0)+1;
+    if(bossCrush())boss.ai=Math.max(boss.ai,6);   // 碾碎前方砖墙，继续推进
+    else boss.ai=0;                               // 撞到钢墙/边界：立即换向
+    if(boss.stuck>90){                            // 兜底：长时间卡死则碾掉身周砖并强制换向
+      bossCrushAround();
+      boss.dir=ENEMY_DIRS[Math.floor(Math.random()*4)];
+      boss.ai=0;boss.stuck=0;
     }
-    boss.ai=0;
-  }
+  }else boss.stuck=0;
   if(boss.cool<=0){
     boss.cool=70;
     const bx=boss.x+boss.size/2,by=boss.y+boss.size/2;
@@ -803,6 +820,38 @@ function bossThink(){
     });
     tone(180,.12,'sawtooth',.15);
   }
+}
+/* BOSS 碾墙：撞到砖墙时按车身宽度整排碾碎（原来只算一个格子，会漏掉被车身覆盖的砖） */
+function bossFrontCells(){
+  const [dx,dy]=DIRS[boss.dir],cells=[];
+  const c0=Math.floor(boss.x/CELL),c1=Math.floor((boss.x+boss.size-1)/CELL);
+  const r0=Math.floor(boss.y/CELL),r1=Math.floor((boss.y+boss.size-1)/CELL);
+  // 车身已嵌入的砖（例如回溯还原地图后），一并碾掉，避免原地卡死
+  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++)
+    if(map[r]&&map[r][c]===BRICK)cells.push([c,r]);
+  if(dx>0){const c=c1+1;for(let r=r0;r<=r1;r++)cells.push([c,r])}
+  else if(dx<0){const c=c0-1;for(let r=r0;r<=r1;r++)cells.push([c,r])}
+  else if(dy>0){const r=r1+1;for(let c=c0;c<=c1;c++)cells.push([c,r])}
+  else if(dy<0){const r=r0-1;for(let c=c0;c<=c1;c++)cells.push([c,r])}
+  return cells;
+}
+function bossCrush(){
+  let hit=false;
+  for(const [c,r] of bossFrontCells()){
+    if(c<0||r<0||c>=COLS||r>=ROWS)continue;
+    if(map[r][c]===BRICK){map[r][c]=EMPTY;boom(c*CELL+20,r*CELL+20,false);hit=true}
+  }
+  if(hit)computeDist();
+  return hit;
+}
+function bossCrushAround(){                       // 兜底：碾掉车身覆盖及紧邻一圈的砖
+  const c0=Math.floor(boss.x/CELL),c1=Math.floor((boss.x+boss.size-1)/CELL);
+  const r0=Math.floor(boss.y/CELL),r1=Math.floor((boss.y+boss.size-1)/CELL);
+  for(let r=r0-1;r<=r1+1;r++)for(let c=c0-1;c<=c1+1;c++){
+    if(c<0||r<0||c>=COLS||r>=ROWS)continue;
+    if(map[r][c]===BRICK){map[r][c]=EMPTY;boom(c*CELL+20,r*CELL+20,false)}
+  }
+  computeDist();
 }
 function killBoss(){
   boss.dead=true;
