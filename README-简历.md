@@ -10,7 +10,7 @@
 
 ## 🌐 在线访问地址（已部署上线 · 加分项）
 
-https://sweet-sunshine-cd0b26.netlify.app
+https://yanghao158640.github.io/competition-bootcamp/
 
 ## 📁 文件结构
 

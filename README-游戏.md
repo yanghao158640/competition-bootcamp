@@ -10,7 +10,7 @@
 
 ## 🌐 在线试玩（已部署上线）
 
-https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
+https://yanghao158640.github.io/competition-bootcamp/tank-game.html
 
 ## 📁 文件结构
 
@@ -45,8 +45,10 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
   失败随机鼓励语（"别灰心，营地的砖还热乎着……"）；
 - **营地 7 发耐久（每局重置）**：血条 + ❤ 实时显示，归零即失败；
   我方每命 3 发血量、3 条生命；
-- **敌军 AI 进攻营地**：沿距离场寻路推进、炮轰挡路砖墙开路、
-  与营地或玩家对齐时优先开火；
+- **敌军 AI 任务分级（打基地为主、打玩家为次要）**：默认沿营地距离场寻路推进、
+  炮轰挡路砖墙开路、与营地对齐优先开火；**仅当玩家靠近（≤7 格）时**才允许少量敌军
+  临时转为「猎手」追击玩家（同时最多 2 辆、约 5 秒），玩家拉开距离或追击超时后
+  **立即回归进攻营地**；开火判定也是营地优先于玩家；
 - **打击感**：屏幕震动、枪口火光、爆炸冲击环、命中白闪、击毁飘分、
   WebAudio 合成音效（零素材）；
 - 【身份标识】地图中央砖墙摆成姓名缩写「YYH」+ 画布右下角「杨豫豪 · YYH」水印；
@@ -58,7 +60,7 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
 | 部分 | 内容 |
 |---|---|
 | `TANK_TYPES / FOE_TYPES` | 3 种我方坦克、3 种敌军兵种的属性表 |
-| `LEVELS / LEVEL_WALLS` | 8 关配置（第 4、8 关 `boss:true`）与每关障碍布局 |
+| `LEVELS / LEVEL_WALLS` | 12 关配置（第 4、8、12 关 `boss:true`）与每关障碍布局 |
 | `ITEM_TYPES / SHOP` | 6 种道具与 7 种商店商品的配置表 |
 | `buildMap()` + `GLYPH` | 地图构建；中央砖墙按字形矩阵摆出「YYH」 |
 | `computeDist()` | 以营地为源点的距离场（Dijkstra，砖墙代价 6），供敌军/BOSS 寻路 |
@@ -88,7 +90,7 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
         lucide.js（仓库现有资源），其余素材零外部依赖。
   【身份标识】地图中央砖墙摆成姓名缩写「YYH」，
              画布右下角亦有「杨豫豪 · YYH」水印。
-  【玩法特性】主界面 + 双模式（闯关 8 关 / 生存 10 天）/
+  【玩法特性】主界面 + 双模式（闯关 12 关 / 生存 10 天）/
              闯关每 4 关 BOSS / 金币全局持久化（输了也能永久升级）/
              永久升级系统 + 生存里程碑奖励 + 永久「黄金徽章」buff /
              随机道具 / 金币商店 / 守护×3 时间倒流 / 打击感与音效。
@@ -229,7 +231,7 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
     <h2>坦克大战 YYH</h2>
     <div class="sub">守住营地 🏫，歼灭敌军 · 金币全局累计，输了也能永久变强</div>
     <div class="coins">🪙 我的金币：<b id="menuCoins">0</b></div>
-    <button class="menuBtn" id="btnCampaign">⚔️ 闯关模式<span class="tag">8 关 · 每 4 关一个 BOSS</span></button>
+    <button class="menuBtn" id="btnCampaign">⚔️ 闯关模式<span class="tag">12 关 · 每 4 关一个 BOSS（4 / 8 / 12）</span></button>
     <button class="menuBtn" id="btnSurvival">♾️ 生存模式<span class="tag">最高 10 天 · 生存越久金币越多 · 通关解锁永久 buff</span></button>
     <button class="menuBtn" id="btnUpgrade">🔧 永久升级<span class="tag">用金币永久强化坦克与营地</span></button>
     <button class="menuBtn small" id="btnRules">📖 游戏规则</button>
@@ -253,7 +255,8 @@ https://sweet-sunshine-cd0b26.netlify.app/tank-game.html
       <li>❤️ <b>我方血量</b>：每条命 3 发，共 3 条生命；受击后 0.5 秒无敌；每关开始生命重置</li>
       <li>🕹️ <b>操作</b>：WASD / 方向键移动，空格开炮（手机用屏幕虚拟按键）</li>
       <li>🤖 <b>敌军</b>：从顶部三个出生门传送入场；多数打营地，头带红标的「猎手」追杀你</li>
-      <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 关单挑巨型坦克，击毁大量金币</li>
+      <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 / 12 关单挑巨型坦克（最终 BOSS 45 血），击毁大量金币</li>
+      <li>🤖 <b>敌军任务</b>：以<b>进攻营地为主</b>，仅在靠近你时才有少量敌军临时改打你（次要任务）</li>
       <li>🎁 <b>道具</b>：⭐火力 🔧修理 🛡️无敌 ❄️冻结 💣爆破 🪙金币 ❤️加命 ⚡速射</li>
       <li>🛒 <b>商店</b>：每关通关后可用金币强化（本局内生效）</li>
       <li>🔧 <b>永久升级</b>：主界面的永久升级对所有模式生效，输了金币仍在</li>
@@ -583,7 +586,7 @@ function nextLevel(){
 function showMenu(){state='menu';document.getElementById('menuPanel').classList.remove('hide');renderMenuCoins()}
 function showSelect(m){
   mode=m;state='select';
-  document.getElementById('selectSub').textContent=m==='survival'?'生存模式：无尽波次，活得越久金币越多':'闯关模式：15 关，每 4 关一个 BOSS';
+  document.getElementById('selectSub').textContent=m==='survival'?'生存模式：最高 10 天，活得越久金币越多':'闯关模式：12 关，每 4 关一个 BOSS（4 / 8 / 12）';
   document.getElementById('selectPanel').classList.remove('hide');
 }
 function hearts(n){return n>8?'❤×'+n:('❤'.repeat(Math.max(n,0))||'💀')}
@@ -705,10 +708,8 @@ function spawnEnemy(){
   if(boss&&!boss.dead&&x<boss.x+boss.size&&x+CELL>boss.x&&y<boss.y+boss.size&&y+CELL>boss.y)return;
   const kind=cfg.mix[Math.floor(Math.random()*cfg.mix.length)];
   const ft=FOE_TYPES[kind];
-  const hunterP={basic:.2,fast:.45,armor:.25}[kind];
-  const hunters=enemies.filter(e=>e.hunter).length;
-  const hunter=Math.random()<hunterP&&hunters<2;
-  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,hunter,spawnT:24,
+  // 出生默认执行主任务（打基地）；打玩家为次要任务，由 enemyThink 在玩家靠近时临时指派
+  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,hunter:false,chaseT:0,spawnT:24,
     hp:ft.hp,sp:ft.sp*cfg.rate,color:ft.color,score:ft.score,hitT:0});
   gateFlash[gi]=18;
   foesTotal--;syncHud();
@@ -763,8 +764,21 @@ function brickAhead(e){
 function enemyThink(e){
   if(e.spawnT>0){e.spawnT--;return}
   if(e.hitT>0)e.hitT--;
+  if(e.hunter&&--e.chaseT<=0)e.hunter=false;   // 追击有时限，超时回归主任务（打基地）
   if(--e.ai<=0){
     e.ai=26+Math.random()*36;
+    /* —— 任务判定：以进攻营地为【主任务】 —— */
+    /* 仅当玩家靠近时，才允许少量敌军临时转为打玩家【次要任务】，
+       且有同时数量上限；玩家拉开距离或超时后立即回归打基地 */
+    const pc=Math.floor((player.x+17)/CELL),pr=Math.floor((player.y+17)/CELL);
+    const ec=Math.floor((e.x+17)/CELL),er=Math.floor((e.y+17)/CELL);
+    const nearPlayer=Math.abs(pc-ec)+Math.abs(pr-er)<=7;
+    if(e.hunter&&!nearPlayer)e.hunter=false;
+    else if(!e.hunter&&nearPlayer){
+      const hunters=enemies.filter(x=>x.hunter).length;
+      const p={basic:.08,fast:.25,armor:.12}[e.kind];
+      if(hunters<2&&Math.random()<p){e.hunter=true;e.chaseT=300}   // 最多 2 辆、约 5 秒
+    }
     const field=e.hunter?pdist:dist;
     const c=Math.floor((e.x+17)/CELL),r=Math.floor((e.y+17)/CELL);
     let best=null,bd=(field[r]&&field[r][c])||1e9;
@@ -957,7 +971,7 @@ function checkLevelEnd(){
   if(state!=='playing')return;
   if(foesTotal===0&&enemies.length===0&&(!boss||boss.dead)){
     if(mode==='campaign'&&level>=CAMPAIGN_LEVELS){
-      winGame('🏆 全部通关！','15 关征服者 · 营地在你的守护下安然无恙！');
+      winGame('🏆 全部通关！','12 关征服者 · 营地在你的守护下安然无恙！');
     }
     else if(mode==='survival'&&level>=SURVIVAL_MAX){
       const ms=survivalMilestone(SURVIVAL_MAX);
