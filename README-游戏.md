@@ -32,8 +32,8 @@ https://yanghao158640.github.io/competition-bootcamp/tank-game.html
 - **BOSS 防卡死**：BOSS 关开局清空出生区（部分地图出生格带钢墙，原会导致出生即卡死）；
   无更优路线时随机换向、撞墙按车身整排碾砖、长时间卡死则碾掉身周砖强制脱困；
 - **随机道具**：⭐火力+1 / 🔧营地修理 / 🛡️无敌 6 秒 / ❄️冻结敌军 5 秒 /
-  💣全屏爆破 / 🪙金币+80——定时刷新 + 击杀 25% 掉落，走过去拾取；
-- **金币商店**：击杀 +10、通关奖励（100 + 关卡×20 + 剩余生命×20），
+  💣全屏爆破 / 🪙金币+50——定时刷新 + 击杀 25% 掉落，走过去拾取；
+- **金币商店**：击杀 +6、通关奖励（50 + 关卡×30 + 剩余生命×20）、BOSS +100、金币道具 +50，
   可购火力/移速/射速/血量上限/生命/营地加固/钢墙护营（强化营地与坦克）；
 - **守护·时间倒流（3 次）**：营地失守不直接判负，触发时间暂停音效 +
   坦克缓缓回退原位 + 砖墙与营地还原；**每次回溯都有专属台词**
@@ -683,11 +683,11 @@ function applyItem(type){
     case 'shield':player.shieldT=360;break;
     case 'freeze':freezeT=300;break;
     case 'bomb':
-      enemies.forEach(e=>{boom(e.x+17,e.y+17,true);score+=e.score;coins+=5;levelKills++});
+      enemies.forEach(e=>{boom(e.x+17,e.y+17,true);score+=e.score;coins+=3;levelKills++});
       enemies=[];
       if(boss&&!boss.dead){boss.hp-=5;boss.hitT=8;if(boss.hp<=0)killBoss()}
       break;
-    case 'coin':gainCoins(80);S.coin();break;
+    case 'coin':gainCoins(50);S.coin();break;
     case 'life':lives=Math.min(5+(meta.buff?1:0),lives+1);break;
     case 'rapid':rapidT=900;break;
   }
@@ -871,7 +871,7 @@ function killBoss(){
   boss.dead=true;
   const bx=boss.x+boss.size/2,by=boss.y+boss.size/2;
   for(let i=0;i<3;i++)boom(bx+(Math.random()-.5)*40,by+(Math.random()-.5)*40,true);
-  score+=1000;gainCoins(150);levelKills++;
+  score+=1000;gainCoins(100);levelKills++;
   addFloat(bx,by-20,'击毁 BOSS！+1000 分 +150🪙','#ffd666');
   addShake(14);S.win();
 }
@@ -985,10 +985,10 @@ function onLevelClear(){
   let reward,extra='';
   if(mode==='survival'){
     const ms=survivalMilestone(level);
-    reward=Math.round((40+level*30+ms.bonus)*goldMul());   // 生存金币随天数递增
+    reward=Math.round((25+level*18+ms.bonus)*goldMul());   // 生存金币随天数递增
     extra=ms.msg;
   }else{
-    reward=Math.round((80+level*50+lives*30)*goldMul());   // 闯关金币随关卡递增
+    reward=Math.round((50+level*30+lives*20)*goldMul());   // 闯关金币随关卡递增
   }
   gainCoins(reward);
   const praise=PRAISES[Math.floor(Math.random()*PRAISES.length)];
@@ -1129,7 +1129,7 @@ function step(){
         if(e.hp<=0){
           boom(e.x+17,e.y+17,true);
           addFloat(e.x+17,e.y-6,'+'+e.score,'#ffd666');
-          score+=e.score;gainCoins(10);levelKills++;
+          score+=e.score;gainCoins(6);levelKills++;
           enemies.splice(idx,1);
           if(Math.random()<.25)spawnItem(e.x,e.y);
           syncHud();checkLevelEnd();
