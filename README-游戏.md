@@ -15,8 +15,10 @@ https://yanghao158640.github.io/competition-bootcamp/tank-game.html
 ## 📁 文件结构
 
 ```
-├── tank-game.html    坦克大战（Canvas 实现，双击即可离线运行，默认深色封面）
-├── 浪尖.html         坦克大战「浪尖儿社区」底图版（备份，含社区素材底图）
+├── tank-game.html    坦克大战（Canvas 实现，双击即可离线运行，默认 AI 战场封面）
+├── 浪尖.html         坦克大战「浪尖儿社区」底图版（含社区素材底图）
+├── 浪尖-备份.html    浪尖版的一份完整备份（与浪尖.html 内容一致）
+├── bg-battle.jpg     主版本背景：AI 生成的 1920×1080 战场封面（自托管，零外部依赖）
 ├── bg.jpg            底图素材：浪尖儿大学生社区学员手册（供 浪尖.html 使用）
 ├── lucide.js         商店界面图标库（项目自托管，仓库现有资源）
 └── README.md         本说明文档（文末附 tank-game.html 完整源代码）
@@ -52,8 +54,9 @@ https://yanghao158640.github.io/competition-bootcamp/tank-game.html
 - **打击感**：屏幕震动、枪口火光、爆炸冲击环、命中白闪、击毁飘分、
   WebAudio 合成音效（零素材）；
 - 【身份标识】地图中央砖墙摆成姓名缩写「YYH」+ 画布右下角「杨豫豪 · YYH」水印；
-- 【底图】主版本为深色战场封面；另存「浪尖.html」为浪尖儿社区底图版（含社区素材，
-  可用于获取底图加分，游戏内显示社区名称）。
+- 【底图】主版本采用一张 AI 生成的 1920×1080 战场封面（自托管 bg-battle.jpg，
+  无外部依赖），叠加暗罩保留可读性；另存「浪尖.html」为浪尖儿社区底图版（含社区素材，
+  可用于获取底图加分，游戏内显示社区名称），并附「浪尖-备份.html」完整备份。
 
 ## 🗺️ 源代码导读（tank-game.html）
 
@@ -474,21 +477,34 @@ let map=buildMap(1);
 
 /* ================= 底图：深色战场封面（离屏绘制一次） ================= */
 const BG=document.createElement('canvas');BG.width=CV.width;BG.height=CV.height;
+/* 主版本背景：AI 生成的战场封面（本地 bg-battle.jpg，自托管，零外部依赖） */
+const bgImg=new Image();bgImg.src='bg-battle.jpg';
 function drawBackground(){
   const g=BG.getContext('2d');
-  const grad=g.createLinearGradient(0,0,0,600);
-  grad.addColorStop(0,'#111d18');grad.addColorStop(1,'#08100c');
-  g.fillStyle=grad;g.fillRect(0,0,960,600);
+  if(bgImg.complete && bgImg.naturalWidth){
+    /* 封面缩放居中 */
+    const iw=bgImg.naturalWidth, ih=bgImg.naturalHeight;
+    const s=Math.max(960/iw,600/ih);
+    const dw=iw*s, dh=ih*s, dx=(960-dw)/2, dy=(600-dh)/2;
+    g.drawImage(bgImg,dx,dy,dw,dh);
+    /* 暗罩：保证砖墙/道具/坦克可读 */
+    g.fillStyle='rgba(8,16,12,.62)';g.fillRect(0,0,960,600);
+  }else{
+    const grad=g.createLinearGradient(0,0,0,600);
+    grad.addColorStop(0,'#111d18');grad.addColorStop(1,'#08100c');
+    g.fillStyle=grad;g.fillRect(0,0,960,600);
+  }
   // 中央微光晕
   const glow=g.createRadialGradient(480,300,40,480,300,520);
   glow.addColorStop(0,'rgba(47,211,151,.10)');glow.addColorStop(1,'rgba(0,0,0,0)');
   g.fillStyle=glow;g.fillRect(0,0,960,600);
   // 网格
-  g.strokeStyle='rgba(255,255,255,.045)';g.lineWidth=1;
+  g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=1;
   for(let x=0;x<=960;x+=CELL){g.beginPath();g.moveTo(x,0);g.lineTo(x,600);g.stroke()}
   for(let y=0;y<=600;y+=CELL){g.beginPath();g.moveTo(0,y);g.lineTo(960,y);g.stroke()}
 }
 drawBackground();
+bgImg.onload=drawBackground;
 
 /* ================= 音效（WebAudio 合成，无外部素材） ================= */
 let AC=null;

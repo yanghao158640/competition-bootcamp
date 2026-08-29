@@ -12,10 +12,11 @@
         lucide.js（仓库现有资源），其余素材零外部依赖。
   【身份标识】地图中央砖墙摆成姓名缩写「YYH」，
              画布右下角亦有「杨豫豪 · YYH」水印。
-  【玩法特性】主界面 + 双模式（闯关 12 关 / 生存 10 天）/
+  【玩法特性】主界面 + 双模式（闯关 15 关 / 生存无尽）/
              闯关每 4 关 BOSS / 金币全局持久化（输了也能永久升级）/
              永久升级系统 + 生存里程碑奖励 + 永久「黄金徽章」buff /
              随机道具 / 金币商店 / 守护×3 时间倒流 / 打击感与音效。
+  【底图加分】底图采用「浪尖儿大学生社区」学员手册素材（bg.jpg）。
   ============================================================
 -->
 <style>
@@ -147,13 +148,14 @@
 
 <div class="stage">
   <canvas id="game" width="960" height="600"></canvas>
+  <img id="bgimg" src="bg.jpg" alt="" style="display:none">
 
   <!-- 主界面 -->
   <div id="menuPanel" class="panel">
     <h2>坦克大战 YYH</h2>
     <div class="sub">守住营地 🏫，歼灭敌军 · 金币全局累计，输了也能永久变强</div>
     <div class="coins">🪙 我的金币：<b id="menuCoins">0</b></div>
-    <button class="menuBtn" id="btnCampaign">⚔️ 闯关模式<span class="tag">12 关 · 每 4 关一个 BOSS（4 / 8 / 12）</span></button>
+    <button class="menuBtn" id="btnCampaign">⚔️ 闯关模式<span class="tag">8 关 · 每 4 关一个 BOSS</span></button>
     <button class="menuBtn" id="btnSurvival">♾️ 生存模式<span class="tag">最高 10 天 · 生存越久金币越多 · 通关解锁永久 buff</span></button>
     <button class="menuBtn" id="btnUpgrade">🔧 永久升级<span class="tag">用金币永久强化坦克与营地</span></button>
     <button class="menuBtn small" id="btnRules">📖 游戏规则</button>
@@ -177,8 +179,7 @@
       <li>❤️ <b>我方血量</b>：每条命 3 发，共 3 条生命；受击后 0.5 秒无敌；每关开始生命重置</li>
       <li>🕹️ <b>操作</b>：WASD / 方向键移动，空格开炮（手机用屏幕虚拟按键）</li>
       <li>🤖 <b>敌军</b>：从顶部三个出生门传送入场；多数打营地，头带红标的「猎手」追杀你</li>
-      <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 / 12 关单挑巨型坦克（最终 BOSS 45 血），击毁大量金币</li>
-      <li>🤖 <b>敌军任务</b>：以<b>进攻营地为主</b>，仅在靠近你时才有少量敌军临时改打你（次要任务）</li>
+      <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 关单挑巨型坦克，击毁大量金币</li>
       <li>🎁 <b>道具</b>：⭐火力 🔧修理 🛡️无敌 ❄️冻结 💣爆破 🪙金币 ❤️加命 ⚡速射</li>
       <li>🛒 <b>商店</b>：每关通关后可用金币强化（本局内生效）</li>
       <li>🔧 <b>永久升级</b>：主界面的永久升级对所有模式生效，输了金币仍在</li>
@@ -246,9 +247,8 @@ const EMPTY=0,BRICK=1,STEEL=2;
 const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 const ENEMY_DIRS=['up','down','left','right'];
 const BASE_DEFAULT_HP=7;                       // 营地初始耐久：7 发炮弹
-const CAMPAIGN_LEVELS=12;                      // 闯关模式 12 关
+const CAMPAIGN_LEVELS=8;                       // 闯关模式 8 关
 const SURVIVAL_MAX=10;                         // 生存模式最高 10 天
-const BOSS_SPAWN_CLEAR={c0:10,c1:13,r0:1,r1:3};  // BOSS 出生区（清空，避免出生即被墙卡死）
 
 /* ================= 永久进度（localStorage 持久化） ================= */
 const LS=(typeof localStorage!=='undefined')?localStorage:null;
@@ -282,7 +282,7 @@ const FOE_TYPES={
   fast: {hp:1,sp:2.3, color:'#e08a3e',score:150},
   armor:{hp:3,sp:0.95,color:'#a06ae0',score:300}
 };
-/* ================= 闯关关卡配置（12 关，每 4 关 BOSS） ================= */
+/* ================= 闯关关卡配置（15 关，每 4 关 BOSS） ================= */
 const LEVELS=[
   {total:6, alive:3,mix:['basic','basic','basic'],       rate:1.00},
   {total:8, alive:4,mix:['basic','basic','fast'],        rate:1.08},
@@ -291,11 +291,7 @@ const LEVELS=[
   {total:12,alive:5,mix:['fast','basic','armor','armor'],rate:1.26},
   {total:12,alive:5,mix:['fast','armor','armor'],        rate:1.34},
   {total:14,alive:5,mix:['armor','fast','armor','fast'], rate:1.42},
-  {total:0, alive:0,mix:[],rate:1.30,boss:true,bossHp:35,bossSp:1.0},
-  {total:14,alive:6,mix:['armor','fast','armor','fast'], rate:1.46},
-  {total:16,alive:6,mix:['armor','fast','armor','armor'],rate:1.52},
-  {total:16,alive:6,mix:['fast','fast','armor','armor'], rate:1.58},
-  {total:0, alive:0,mix:[],rate:1.45,boss:true,bossHp:45,bossSp:1.1}
+  {total:0, alive:0,mix:[],rate:1.40,boss:true,bossHp:35,bossSp:1.0}
 ];
 /* 每关额外障碍（YYH 中央布局保持不变，只调整外围） */
 const LEVEL_WALLS=[
@@ -354,22 +350,6 @@ const CHEERS=['别灰心！营地的砖还热乎着，再来一局一定能守�
   '差一点点！下次记得在商店优先加固营地！','好汉不吃眼前亏，换个坦克类型试试？',
   '金币都攒着呢，去主界面永久升级一下再战！'];
 const CELEB_COLORS=['#ffd666','#2fd397','#7dd3fc','#ff7a6e','#a06ae0','#fde047'];
-/* 时间回溯台词：前两次随机（鼓励/嘲讽），第三次专用警示 */
-const REWIND_MSGS=[
-  {t:'别慌，营地又满血了！',c:'#2fd397'},
-  {t:'稳住，这局还能翻！',c:'#2fd397'},
-  {t:'时间就是用来守护营地的！',c:'#2fd397'},
-  {t:'再来，这次一定守住！',c:'#2fd397'},
-  {t:'就这？营地差点又没了',c:'#ffd666'},
-  {t:'你的血压和时间一起倒流了',c:'#ffd666'},
-  {t:'这波啊，这波是时间帮你擦屁股',c:'#ffd666'},
-  {t:'别装了，你就是运气好',c:'#ffd666'},
-  {t:'手速跟不上，只能靠时间倒流？',c:'#ffd666'},
-  {t:'营地说：谢谢你，又白救我一次',c:'#ffd666'},
-  {t:'再想想，这可是你倒数第二次机会',c:'#ffd666'},
-  {t:'建议把守护键焊死在键盘上',c:'#ffd666'}
-];
-const REWIND_LAST='⚠️ 最后一次回溯已用完！下一次失守，时间不会再救你了！';
 
 /* ================= 地图构建 =================
    中央砖墙摆出姓名缩写「YYH」（5 行高，共 11 列宽，居中于第 6~16 列） */
@@ -394,36 +374,27 @@ const BASE={x:11*CELL,y:13*CELL,w:2*CELL,h:CELL};   // 营地（底部中央，�
 let baseHp=BASE_DEFAULT_HP,baseMaxHp=BASE_DEFAULT_HP,steelWallNext=false;
 let map=buildMap(1);
 
-/* ================= 底图：深色战场封面（离屏绘制一次） ================= */
+/* ================= 底图：浪尖儿社区素材（bg.jpg，离屏绘制一次） ================= */
 const BG=document.createElement('canvas');BG.width=CV.width;BG.height=CV.height;
-/* 主版本背景：AI 生成的战场封面（本地 bg-battle.jpg，自托管，零外部依赖） */
-const bgImg=new Image();bgImg.src='bg-battle.jpg';
 function drawBackground(){
   const g=BG.getContext('2d');
-  if(bgImg.complete && bgImg.naturalWidth){
-    /* 封面缩放居中 */
-    const iw=bgImg.naturalWidth, ih=bgImg.naturalHeight;
-    const s=Math.max(960/iw,600/ih);
-    const dw=iw*s, dh=ih*s, dx=(960-dw)/2, dy=(600-dh)/2;
-    g.drawImage(bgImg,dx,dy,dw,dh);
-    /* 暗罩：保证砖墙/道具/坦克可读 */
-    g.fillStyle='rgba(8,16,12,.62)';g.fillRect(0,0,960,600);
+  const img=document.getElementById('bgimg');
+  if(img&&img.complete&&img.naturalWidth>0){
+    const s=Math.max(960/img.naturalWidth,600/img.naturalHeight);
+    const w=img.naturalWidth*s,h=img.naturalHeight*s;
+    g.drawImage(img,(960-w)/2,(600-h)/2,w,h);
+    g.fillStyle='rgba(5,12,10,.45)';g.fillRect(0,0,960,600);
   }else{
     const grad=g.createLinearGradient(0,0,0,600);
-    grad.addColorStop(0,'#111d18');grad.addColorStop(1,'#08100c');
+    grad.addColorStop(0,'#101c17');grad.addColorStop(1,'#0a120e');
     g.fillStyle=grad;g.fillRect(0,0,960,600);
   }
-  // 中央微光晕
-  const glow=g.createRadialGradient(480,300,40,480,300,520);
-  glow.addColorStop(0,'rgba(47,211,151,.10)');glow.addColorStop(1,'rgba(0,0,0,0)');
-  g.fillStyle=glow;g.fillRect(0,0,960,600);
-  // 网格
-  g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=1;
+  g.strokeStyle='rgba(255,255,255,.045)';g.lineWidth=1;
   for(let x=0;x<=960;x+=CELL){g.beginPath();g.moveTo(x,0);g.lineTo(x,600);g.stroke()}
   for(let y=0;y<=600;y+=CELL){g.beginPath();g.moveTo(0,y);g.lineTo(960,y);g.stroke()}
 }
 drawBackground();
-bgImg.onload=drawBackground;
+try{document.getElementById('bgimg').addEventListener('load',drawBackground)}catch(e){}
 
 /* ================= 音效（WebAudio 合成，无外部素材） ================= */
 let AC=null;
@@ -456,7 +427,7 @@ const S={
 let player,enemies,bullets,parts,rings,floats,items,keys,state,score,lives,foesTotal,spawnTimer,level,shake;
 let boss=null,freezeT=0,itemTimer=0,coins=meta.coins,levelKills=0,overMsg='',pDistTimer=0;
 let guards=3,rapidT=0,mode='campaign';
-let rewindT=0,rewDur=0,rewindPlayer=null,rewindList=[],rewindMsg='',rewindColor='#2fd397';
+let rewindT=0,rewDur=0,rewindPlayer=null,rewindList=[];
 let mods,bought;
 let winTitle='',winSub='',celeb=[];             // 胜利庆典
 
@@ -489,12 +460,8 @@ function setupLevel(){
   foesTotal=cfg.total;spawnTimer=30;
   boss=null;
   if(cfg.boss){
-    // 清空 BOSS 出生区：第 8 关等地图在出生格上有钢墙，不清会导致 BOSS 出生即卡死
-    for(let r=BOSS_SPAWN_CLEAR.r0;r<=BOSS_SPAWN_CLEAR.r1;r++)
-      for(let c=BOSS_SPAWN_CLEAR.c0;c<=BOSS_SPAWN_CLEAR.c1;c++)
-        map[r][c]=EMPTY;
     boss={x:11*CELL+4,y:CELL,dir:'down',hp:cfg.bossHp,maxHp:cfg.bossHp,
-      size:2*CELL-8,sp:cfg.bossSp,cool:80,ai:0,hitT:0,stuck:0,dead:false};
+      size:2*CELL-8,sp:cfg.bossSp,cool:80,ai:0,hitT:0,dead:false};
     S.boss();
   }
   player.x=3*CELL;player.y=12*CELL;player.dir='up';player.invT=90;player.hp=player.maxHp;
@@ -521,7 +488,7 @@ function nextLevel(){
 function showMenu(){state='menu';document.getElementById('menuPanel').classList.remove('hide');renderMenuCoins()}
 function showSelect(m){
   mode=m;state='select';
-  document.getElementById('selectSub').textContent=m==='survival'?'生存模式：最高 10 天，活得越久金币越多':'闯关模式：12 关，每 4 关一个 BOSS（4 / 8 / 12）';
+  document.getElementById('selectSub').textContent=m==='survival'?'生存模式：无尽波次，活得越久金币越多':'闯关模式：15 关，每 4 关一个 BOSS';
   document.getElementById('selectPanel').classList.remove('hide');
 }
 function hearts(n){return n>8?'❤×'+n:('❤'.repeat(Math.max(n,0))||'💀')}
@@ -618,11 +585,11 @@ function applyItem(type){
     case 'shield':player.shieldT=360;break;
     case 'freeze':freezeT=300;break;
     case 'bomb':
-      enemies.forEach(e=>{boom(e.x+17,e.y+17,true);score+=e.score;coins+=3;levelKills++});
+      enemies.forEach(e=>{boom(e.x+17,e.y+17,true);score+=e.score;coins+=5;levelKills++});
       enemies=[];
       if(boss&&!boss.dead){boss.hp-=5;boss.hitT=8;if(boss.hp<=0)killBoss()}
       break;
-    case 'coin':gainCoins(50);S.coin();break;
+    case 'coin':gainCoins(80);S.coin();break;
     case 'life':lives=Math.min(5+(meta.buff?1:0),lives+1);break;
     case 'rapid':rapidT=900;break;
   }
@@ -643,8 +610,10 @@ function spawnEnemy(){
   if(boss&&!boss.dead&&x<boss.x+boss.size&&x+CELL>boss.x&&y<boss.y+boss.size&&y+CELL>boss.y)return;
   const kind=cfg.mix[Math.floor(Math.random()*cfg.mix.length)];
   const ft=FOE_TYPES[kind];
-  // 出生默认执行主任务（打基地）；打玩家为次要任务，由 enemyThink 在玩家靠近时临时指派
-  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,hunter:false,chaseT:0,spawnT:24,
+  const hunterP={basic:.2,fast:.45,armor:.25}[kind];
+  const hunters=enemies.filter(e=>e.hunter).length;
+  const hunter=Math.random()<hunterP&&hunters<2;
+  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,hunter,spawnT:24,
     hp:ft.hp,sp:ft.sp*cfg.rate,color:ft.color,score:ft.score,hitT:0});
   gateFlash[gi]=18;
   foesTotal--;syncHud();
@@ -699,21 +668,8 @@ function brickAhead(e){
 function enemyThink(e){
   if(e.spawnT>0){e.spawnT--;return}
   if(e.hitT>0)e.hitT--;
-  if(e.hunter&&--e.chaseT<=0)e.hunter=false;   // 追击有时限，超时回归主任务（打基地）
   if(--e.ai<=0){
     e.ai=26+Math.random()*36;
-    /* —— 任务判定：以进攻营地为【主任务】 —— */
-    /* 仅当玩家靠近时，才允许少量敌军临时转为打玩家【次要任务】，
-       且有同时数量上限；玩家拉开距离或超时后立即回归打基地 */
-    const pc=Math.floor((player.x+17)/CELL),pr=Math.floor((player.y+17)/CELL);
-    const ec=Math.floor((e.x+17)/CELL),er=Math.floor((e.y+17)/CELL);
-    const nearPlayer=Math.abs(pc-ec)+Math.abs(pr-er)<=7;
-    if(e.hunter&&!nearPlayer)e.hunter=false;
-    else if(!e.hunter&&nearPlayer){
-      const hunters=enemies.filter(x=>x.hunter).length;
-      const p={basic:.08,fast:.25,armor:.12}[e.kind];
-      if(hunters<2&&Math.random()<p){e.hunter=true;e.chaseT=300}   // 最多 2 辆、约 5 秒
-    }
     const field=e.hunter?pdist:dist;
     const c=Math.floor((e.x+17)/CELL),r=Math.floor((e.y+17)/CELL);
     let best=null,bd=(field[r]&&field[r][c])||1e9;
@@ -744,22 +700,19 @@ function bossThink(){
       if(nc<0||nr<0||nc>=COLS||nr>=ROWS)continue;
       if(dist[nr][nc]<bd){bd=dist[nr][nc];best=d}
     }
-    // 没有更优方向时随机换向，避免顶着钢墙一动不动
-    boss.dir=(best&&Math.random()<.9)?best:ENEMY_DIRS[Math.floor(Math.random()*4)];
+    if(best)boss.dir=best;
   }
   const [dx,dy]=DIRS[boss.dir];
   const ox=boss.x,oy=boss.y;
   tankMove(boss,dx*boss.sp,dy*boss.sp);
   if(ox===boss.x&&oy===boss.y){
-    boss.stuck=(boss.stuck||0)+1;
-    if(bossCrush())boss.ai=Math.max(boss.ai,6);   // 碾碎前方砖墙，继续推进
-    else boss.ai=0;                               // 撞到钢墙/边界：立即换向
-    if(boss.stuck>90){                            // 兜底：长时间卡死则碾掉身周砖并强制换向
-      bossCrushAround();
-      boss.dir=ENEMY_DIRS[Math.floor(Math.random()*4)];
-      boss.ai=0;boss.stuck=0;
+    const fc=Math.floor((boss.x+boss.size/2+dx*(boss.size/2+CELL/2))/CELL);
+    const fr=Math.floor((boss.y+boss.size/2+dy*(boss.size/2+CELL/2))/CELL);
+    if(fr>=0&&fc>=0&&fr<ROWS&&fc<COLS&&map[fr][fc]===BRICK){
+      map[fr][fc]=EMPTY;computeDist();boom(fc*CELL+20,fr*CELL+20,false);
     }
-  }else boss.stuck=0;
+    boss.ai=0;
+  }
   if(boss.cool<=0){
     boss.cool=70;
     const bx=boss.x+boss.size/2,by=boss.y+boss.size/2;
@@ -770,43 +723,11 @@ function bossThink(){
     tone(180,.12,'sawtooth',.15);
   }
 }
-/* BOSS 碾墙：撞到砖墙时按车身宽度整排碾碎（原来只算一个格子，会漏掉被车身覆盖的砖） */
-function bossFrontCells(){
-  const [dx,dy]=DIRS[boss.dir],cells=[];
-  const c0=Math.floor(boss.x/CELL),c1=Math.floor((boss.x+boss.size-1)/CELL);
-  const r0=Math.floor(boss.y/CELL),r1=Math.floor((boss.y+boss.size-1)/CELL);
-  // 车身已嵌入的砖（例如回溯还原地图后），一并碾掉，避免原地卡死
-  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++)
-    if(map[r]&&map[r][c]===BRICK)cells.push([c,r]);
-  if(dx>0){const c=c1+1;for(let r=r0;r<=r1;r++)cells.push([c,r])}
-  else if(dx<0){const c=c0-1;for(let r=r0;r<=r1;r++)cells.push([c,r])}
-  else if(dy>0){const r=r1+1;for(let c=c0;c<=c1;c++)cells.push([c,r])}
-  else if(dy<0){const r=r0-1;for(let c=c0;c<=c1;c++)cells.push([c,r])}
-  return cells;
-}
-function bossCrush(){
-  let hit=false;
-  for(const [c,r] of bossFrontCells()){
-    if(c<0||r<0||c>=COLS||r>=ROWS)continue;
-    if(map[r][c]===BRICK){map[r][c]=EMPTY;boom(c*CELL+20,r*CELL+20,false);hit=true}
-  }
-  if(hit)computeDist();
-  return hit;
-}
-function bossCrushAround(){                       // 兜底：碾掉车身覆盖及紧邻一圈的砖
-  const c0=Math.floor(boss.x/CELL),c1=Math.floor((boss.x+boss.size-1)/CELL);
-  const r0=Math.floor(boss.y/CELL),r1=Math.floor((boss.y+boss.size-1)/CELL);
-  for(let r=r0-1;r<=r1+1;r++)for(let c=c0-1;c<=c1+1;c++){
-    if(c<0||r<0||c>=COLS||r>=ROWS)continue;
-    if(map[r][c]===BRICK){map[r][c]=EMPTY;boom(c*CELL+20,r*CELL+20,false)}
-  }
-  computeDist();
-}
 function killBoss(){
   boss.dead=true;
   const bx=boss.x+boss.size/2,by=boss.y+boss.size/2;
   for(let i=0;i<3;i++)boom(bx+(Math.random()-.5)*40,by+(Math.random()-.5)*40,true);
-  score+=1000;gainCoins(100);levelKills++;
+  score+=1000;gainCoins(150);levelKills++;
   addFloat(bx,by-20,'击毁 BOSS！+1000 分 +150🪙','#ffd666');
   addShake(14);S.win();
 }
@@ -820,9 +741,6 @@ function startRewind(){
   guards--;
   state='rewind';rewindT=0;rewDur=100;
   S.timeStop();addShake(12);
-  // 回溯台词：最后一次专用警示，否则随机（鼓励/嘲讽）
-  if(guards===0){rewindMsg=REWIND_LAST;rewindColor='#ff7a6e'}
-  else{const m=REWIND_MSGS[Math.floor(Math.random()*REWIND_MSGS.length)];rewindMsg=m.t;rewindColor=m.c}
   rewindPlayer={x:player.x,y:player.y};
   bullets=[];freezeT=0;
   map=buildMap(level);computeDist();computePlayerDist();   // 砖墙/障碍倒流回本关初始态
@@ -906,7 +824,7 @@ function checkLevelEnd(){
   if(state!=='playing')return;
   if(foesTotal===0&&enemies.length===0&&(!boss||boss.dead)){
     if(mode==='campaign'&&level>=CAMPAIGN_LEVELS){
-      winGame('🏆 全部通关！','12 关征服者 · 营地在你的守护下安然无恙！');
+      winGame('🏆 全部通关！','15 关征服者 · 营地在你的守护下安然无恙！');
     }
     else if(mode==='survival'&&level>=SURVIVAL_MAX){
       const ms=survivalMilestone(SURVIVAL_MAX);
@@ -920,10 +838,10 @@ function onLevelClear(){
   let reward,extra='';
   if(mode==='survival'){
     const ms=survivalMilestone(level);
-    reward=Math.round((25+level*18+ms.bonus)*goldMul());   // 生存金币随天数递增
+    reward=Math.round((40+level*30+ms.bonus)*goldMul());   // 生存金币随天数递增
     extra=ms.msg;
   }else{
-    reward=Math.round((50+level*30+lives*20)*goldMul());   // 闯关金币随关卡递增
+    reward=Math.round((80+level*50+lives*30)*goldMul());   // 闯关金币随关卡递增
   }
   gainCoins(reward);
   const praise=PRAISES[Math.floor(Math.random()*PRAISES.length)];
@@ -1064,7 +982,7 @@ function step(){
         if(e.hp<=0){
           boom(e.x+17,e.y+17,true);
           addFloat(e.x+17,e.y-6,'+'+e.score,'#ffd666');
-          score+=e.score;gainCoins(6);levelKills++;
+          score+=e.score;gainCoins(10);levelKills++;
           enemies.splice(idx,1);
           if(Math.random()<.25)spawnItem(e.x,e.y);
           syncHud();checkLevelEnd();
@@ -1175,6 +1093,12 @@ function draw(){
     CX.beginPath();CX.arc(0,0,4.5,2.1,6.3);CX.stroke();
     CX.restore();
   });
+  CX.save();
+  CX.font='bold 26px "Microsoft YaHei"';CX.textAlign='center';
+  CX.shadowColor='rgba(47,211,151,.8)';CX.shadowBlur=14;
+  CX.fillStyle='rgba(255,255,255,.5)';
+  CX.fillText('浪尖儿大学生社区',480,152);
+  CX.restore();
   items.forEach(it=>{
     if(it.life<180&&Math.floor(it.life/10)%2===0)return;
     const T=ITEM_TYPES[it.type],cx=it.x+12,cy=it.y+12;
@@ -1272,24 +1196,7 @@ function draw(){
     CX.fillText(msg,480,262);
     CX.font='17px "Microsoft YaHei"';CX.fillStyle='#e8f1ed';
     if(state==='ready')CX.fillText(cfg&&cfg.boss?'击毁巨型坦克！按 回车 出击':'按 回车 出击（敌军 '+cfg.total+' 辆）',480,310);
-    if(state==='rewind'){
-      // 回溯专属台词（最后一次为醒目警示）
-      const last=(guards===0);
-      CX.save();
-      CX.font=(last?'bold 24px':'bold 22px')+' "Microsoft YaHei"';
-      CX.fillStyle=rewindColor;
-      CX.shadowColor=rewindColor;CX.shadowBlur=last?18:12;
-      CX.fillText(rewindMsg,480,318);
-      CX.restore();
-      CX.font='16px "Microsoft YaHei"';CX.fillStyle='#9db4ab';
-      CX.fillText('守护剩余 '+guards+' 次 · 坦克缓缓回退原位',480,358);
-      if(last){                                   // 剩余次数：最后一个标志变灰
-        for(let i=0;i<3;i++){
-          CX.fillStyle=i<guards?'#2fd397':'rgba(120,140,134,.35)';
-          CX.beginPath();CX.arc(456+i*24,392,7,0,7);CX.fill();
-        }
-      }
-    }
+    if(state==='rewind')CX.fillText('守护剩余 '+guards+' 次 · 坦克缓缓回退原位',480,310);
     if(state==='win'){
       CX.fillText(winSub,480,310);
       CX.fillText('最终得分：'+score+' · 金币：'+coins+'，按 回车 返回主界面',480,344);
