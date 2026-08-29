@@ -348,6 +348,20 @@ const CHEERS=['别灰心！营地的砖还热乎着，再来一局一定能守�
   '差一点点！下次记得在商店优先加固营地！','好汉不吃眼前亏，换个坦克类型试试？',
   '金币都攒着呢，去主界面永久升级一下再战！'];
 const CELEB_COLORS=['#ffd666','#2fd397','#7dd3fc','#ff7a6e','#a06ae0','#fde047'];
+/* 时间回溯台词：前两次随机（鼓励/嘲讽），第三次专用警示 */
+const REWIND_MSGS=[
+  {t:'别慌，营地又满血了！',c:'#2fd397'},
+  {t:'稳住，这局还能翻！',c:'#2fd397'},
+  {t:'时间就是用来守护营地的！',c:'#2fd397'},
+  {t:'再来，这次一定守住！',c:'#2fd397'},
+  {t:'敌军：？？？刚才白打了？',c:'#ffd666'},
+  {t:'敌军表示：这不科学',c:'#ffd666'},
+  {t:'就这？营地差点又没了',c:'#ffd666'},
+  {t:'你的血压和时间一起倒流了',c:'#ffd666'},
+  {t:'这波啊，这波是时间帮你擦屁股',c:'#ffd666'},
+  {t:'敌人：他是不是开挂了？',c:'#ffd666'}
+];
+const REWIND_LAST='⚠️ 最后一次回溯已用完！下一次失守，时间不会再救你了！';
 
 /* ================= 地图构建 =================
    中央砖墙摆出姓名缩写「YYH」（5 行高，共 11 列宽，居中于第 6~16 列） */
@@ -421,7 +435,7 @@ const S={
 let player,enemies,bullets,parts,rings,floats,items,keys,state,score,lives,foesTotal,spawnTimer,level,shake;
 let boss=null,freezeT=0,itemTimer=0,coins=meta.coins,levelKills=0,overMsg='',pDistTimer=0;
 let guards=3,rapidT=0,mode='campaign';
-let rewindT=0,rewDur=0,rewindPlayer=null,rewindList=[];
+let rewindT=0,rewDur=0,rewindPlayer=null,rewindList=[],rewindMsg='',rewindColor='#2fd397';
 let mods,bought;
 let winTitle='',winSub='',celeb=[];             // 胜利庆典
 
@@ -735,6 +749,9 @@ function startRewind(){
   guards--;
   state='rewind';rewindT=0;rewDur=100;
   S.timeStop();addShake(12);
+  // 回溯台词：最后一次专用警示，否则随机（鼓励/嘲讽）
+  if(guards===0){rewindMsg=REWIND_LAST;rewindColor='#ff7a6e'}
+  else{const m=REWIND_MSGS[Math.floor(Math.random()*REWIND_MSGS.length)];rewindMsg=m.t;rewindColor=m.c}
   rewindPlayer={x:player.x,y:player.y};
   bullets=[];freezeT=0;
   map=buildMap(level);computeDist();computePlayerDist();   // 砖墙/障碍倒流回本关初始态
@@ -1184,7 +1201,24 @@ function draw(){
     CX.fillText(msg,480,262);
     CX.font='17px "Microsoft YaHei"';CX.fillStyle='#e8f1ed';
     if(state==='ready')CX.fillText(cfg&&cfg.boss?'击毁巨型坦克！按 回车 出击':'按 回车 出击（敌军 '+cfg.total+' 辆）',480,310);
-    if(state==='rewind')CX.fillText('守护剩余 '+guards+' 次 · 坦克缓缓回退原位',480,310);
+    if(state==='rewind'){
+      // 回溯专属台词（最后一次为醒目警示）
+      const last=(guards===0);
+      CX.save();
+      CX.font=(last?'bold 24px':'bold 22px')+' "Microsoft YaHei"';
+      CX.fillStyle=rewindColor;
+      CX.shadowColor=rewindColor;CX.shadowBlur=last?18:12;
+      CX.fillText(rewindMsg,480,318);
+      CX.restore();
+      CX.font='16px "Microsoft YaHei"';CX.fillStyle='#9db4ab';
+      CX.fillText('守护剩余 '+guards+' 次 · 坦克缓缓回退原位',480,358);
+      if(last){                                   // 剩余次数：最后一个标志变灰
+        for(let i=0;i<3;i++){
+          CX.fillStyle=i<guards?'#2fd397':'rgba(120,140,134,.35)';
+          CX.beginPath();CX.arc(456+i*24,392,7,0,7);CX.fill();
+        }
+      }
+    }
     if(state==='win'){
       CX.fillText(winSub,480,310);
       CX.fillText('最终得分：'+score+' · 金币：'+coins+'，按 回车 返回主界面',480,344);
