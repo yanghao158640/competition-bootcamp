@@ -114,13 +114,15 @@ console.log('【7】闯关 12 关 + BOSS');
 check('闯关共 12 关',LEVELS.length===12&&CAMPAIGN_LEVELS===12,'len='+LEVELS.length);
 level=4;setupLevel();state='playing';
 check('第4关 BOSS 血量 24',boss&&boss.hp===24);
-check('BOSS 关无小兵',foesTotal===0);
+check('BOSS 出场召唤小怪',enemies.length>=1,'enemies='+enemies.length);
+check('BOSS 关无自动刷怪(foesTotal=0)',foesTotal===0);
 level=8;setupLevel();
 check('第8关 BOSS 血量 42',boss&&boss.hp===42);
 level=12;setupLevel();
 check('第12关最终 BOSS 血量 54',boss&&boss.hp===54);
 level=12;foesTotal=0;enemies=[];boss.hp=1;
 bullets.push({x:boss.x+10,y:boss.y+10,dx:0,dy:0,speed:0,dmg:1,friendly:1});step();
+enemies=[];checkLevelEnd();   // 清掉 BOSS 濒死召唤的增援，验证仍可通关
 check('闯关通关进入 win',state==='win',state);
 check('胜利标题为全部通关',winTitle.indexOf('全部通关')>=0,'winTitle='+winTitle);
 

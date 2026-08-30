@@ -101,15 +101,135 @@ https://yanghao158640.github.io/competition-bootcamp/
             animation: float 10s ease-in-out infinite alternate-reverse;
         }
 
-        /* ===== Dynamic Canvas Background (dark glow + waves) ===== */
-        #bgCanvas {
+        /* ===== LiquidChrome 动态背景 (液态光效) ===== */
+        #liquid-chrome {
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            display: block;
             z-index: 0;
             pointer-events: none;
+            background: #030712;
+        }
+        #liquid-chrome canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ===== DriftWall 3D 漂移图片墙 (React Bits 移植) ===== */
+        .drift-wall {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            perspective: var(--dw-perspective, 1200px);
+            perspective-origin: 50% 50%;
+            --dw-tile-w: 200px;
+            --dw-tile-h: 132px;
+            --dw-gap: 18px;
+            --dw-radius: 14px;
+            --dw-lift: 64px;
+            --dw-dim: 0.55;
+            --dw-gray: 0;
+            --dw-overlay: #060010;
+            --dw-edge: 40%;
+            -webkit-mask-image:
+                radial-gradient(ellipse 78% 82% at 50% 46%, #000 var(--dw-edge), transparent 100%),
+                linear-gradient(to top, #000 var(--dw-edge), transparent 100%);
+            -webkit-mask-composite: source-in;
+            mask-image:
+                radial-gradient(ellipse 78% 82% at 50% 46%, #000 var(--dw-edge), transparent 100%),
+                linear-gradient(to top, #000 var(--dw-edge), transparent 100%);
+            mask-composite: intersect;
+        }
+        .drift-wall__plane {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            display: flex;
+            flex-direction: row;
+            transform-style: preserve-3d;
+            cursor: pointer;
+            transform-origin: 50% 50%;
+            will-change: transform;
+        }
+        .drift-wall__col {
+            position: relative;
+            width: calc(var(--dw-tile-w) + var(--dw-gap));
+            transform-style: preserve-3d;
+        }
+        .drift-wall__track {
+            display: flex;
+            flex-direction: column;
+            will-change: transform;
+            transform-style: preserve-3d;
+        }
+        .drift-wall__tile {
+            position: relative;
+            display: block;
+            width: 100%;
+            height: calc(var(--dw-tile-h) + var(--dw-gap));
+            flex: 0 0 auto;
+            outline: none;
+            transform-style: preserve-3d;
+        }
+        .drift-wall__inner {
+            position: absolute;
+            inset: calc(var(--dw-gap) / 2);
+            display: block;
+            border-radius: var(--dw-radius);
+            overflow: hidden;
+            background: #0b0b12;
+            opacity: var(--dw-dim);
+            transform: translateZ(0);
+            pointer-events: none;
+            transition:
+                transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .drift-wall__tile img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            filter: grayscale(var(--dw-gray)) saturate(0.92);
+            transition: filter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        .drift-wall__overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--dw-overlay);
+            opacity: 0.42;
+            pointer-events: none;
+            transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .drift-wall__tile.is-active .drift-wall__inner,
+        .drift-wall__tile:focus-visible .drift-wall__inner {
+            opacity: 1;
+            transform: translateZ(var(--dw-lift));
+            box-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.7);
+        }
+        .drift-wall__tile.is-active img,
+        .drift-wall__tile:focus-visible img {
+            filter: grayscale(0) saturate(1.05);
+        }
+        .drift-wall__tile.is-active .drift-wall__overlay,
+        .drift-wall__tile:focus-visible .drift-wall__overlay {
+            opacity: 0;
+        }
+        .drift-wall__tile:focus-visible .drift-wall__inner {
+            box-shadow:
+                0 24px 60px -18px rgba(0, 0, 0, 0.7),
+                0 0 0 2px rgba(255, 255, 255, 0.9);
+        }
+        #drift-wall {
+            height: 72vh;
+            min-height: 420px;
         }
 
         /* ===== Reveal scroll animation ===== */
@@ -278,7 +398,7 @@ https://yanghao158640.github.io/competition-bootcamp/
 
         /* ===== Print ===== */
         @media print {
-            .glow-blob-1, .glow-blob-2, .lightbox-overlay, .toast-container,
+            .glow-blob-1, .glow-blob-2, #liquid-chrome, .lightbox-overlay, .toast-container,
             .nav-mobile, .nav-overlay, .hamburger-btn { display: none !important; }
             body { background: #fff !important; color: #1e293b !important; }
             .glass-card { background: #fff !important; border: 1px solid #e2e8f0 !important; backdrop-filter: none !important; }
@@ -298,12 +418,8 @@ https://yanghao158640.github.io/competition-bootcamp/
 
 <body class="bg-[#030712] text-slate-200 font-jakarta min-h-screen overflow-x-hidden relative">
 
-    <!-- ===== Dynamic Background (dark glow + waves) ===== -->
-    <canvas id="bgCanvas" aria-hidden="true"></canvas>
-
-    <!-- ===== Background Glow Blobs ===== -->
-    <div class="glow-blob-1" aria-hidden="true"></div>
-    <div class="glow-blob-2" aria-hidden="true"></div>
+    <!-- ===== LiquidChrome 动态背景 (液态光效) ===== -->
+    <div id="liquid-chrome" aria-hidden="true"></div>
 
     <!-- ===== Mobile Nav Overlay ===== -->
     <div class="nav-overlay" id="navOverlay" aria-hidden="true"></div>
@@ -349,7 +465,7 @@ https://yanghao158640.github.io/competition-bootcamp/
 
         <!-- ========== HERO ========== -->
         <section id="hero" class="reveal">
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-12 text-center">
+            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-12 text-center">
                 <!-- Avatar -->
                 <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br from-cyan-400 to-indigo-500 flex items-center justify-center text-2xl font-extrabold text-white shadow-lg shadow-cyan-500/20">
                     杨
@@ -370,14 +486,13 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <div class="flex flex-wrap justify-center gap-2">
                     <span class="px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">河南城建学院</span>
                     <span class="px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">2026级</span>
-                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">高考493分</span>
                 </div>
                 <!-- Professional Summary -->
                 <div class="mt-6 pt-5 border-t border-white/5">
                     <p class="text-sm text-slate-300 leading-relaxed max-w-2xl mx-auto">
-                        环境工程专业本科生，辅修<span class="text-cyan-300 font-medium">AI工具应用</span>方向。
-                        熟练运用 <span class="text-cyan-300 font-medium">7+</span> 款AI工具，持有 <span class="text-cyan-300 font-medium">8</span> 项AI领域认证。
-                        具备 Python 脚本开发、小游戏制作、海报设计等实践能力，能快速上手新技术并产出落地成果。
+                        能为你做什么：熟练运用 <span class="text-cyan-300 font-medium">7+</span> 款AI工具与 Python，把你的想法快速落地成
+                        <span class="text-cyan-300 font-medium">网站、小游戏、自动化脚本、海报与PPT</span>。
+                        擅长快速上手新技术、低成本产出可用成果——你来提需求，我来帮你实现。
                     </p>
                 </div>
             </div>
@@ -386,19 +501,19 @@ https://yanghao158640.github.io/competition-bootcamp/
         <!-- ========== HIGHLIGHTS ========== -->
         <section id="highlights" class="mt-6 reveal">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                <div class="highlight-card glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">7+</div>
                     <div class="text-xs text-slate-400 mt-1">款AI工具熟练运用</div>
                 </div>
-                <div class="highlight-card glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">8</div>
                     <div class="text-xs text-slate-400 mt-1">项AI领域认证</div>
                 </div>
-                <div class="highlight-card glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">多个</div>
                     <div class="text-xs text-slate-400 mt-1">Python实践项目</div>
                 </div>
-                <div class="highlight-card glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">1篇+</div>
                     <div class="text-xs text-slate-400 mt-1">文章被校内文学社刊采用</div>
                 </div>
@@ -411,7 +526,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="briefcase" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">经历</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
                 <!-- Tabs -->
                 <div class="flex border-b border-white/5" role="tablist" id="expTabs">
                     <button class="tab-btn flex-1 px-4 py-3.5 text-sm font-medium text-slate-400 border-b-2 border-transparent" role="tab" aria-selected="true" aria-controls="expPanel0">
@@ -465,7 +580,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                                 </div>
                                 <div class="flex-1">
                                     <h3 class="text-white font-semibold">河南城建学院 · 环境工程专业</h3>
-                                    <p class="text-sm text-slate-400 mt-1">2026级本科生 · 高考 493 分，全省位次前 20%</p>
+                                    <p class="text-sm text-slate-400 mt-1">2026级本科生 · 专注环境工程与 AI 工具应用，用技术把想法落地</p>
                                 </div>
                             </div>
                             <div class="flex gap-4">
@@ -499,7 +614,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="folder-git-2" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">实践项目</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
                 <!-- Tabs -->
                 <div class="flex border-b border-white/5" role="tablist" id="projTabs">
                     <button class="tab-btn flex-1 px-4 py-3.5 text-sm font-medium text-slate-400 border-b-2 border-transparent" role="tab" aria-selected="true" aria-controls="projPanel0">
@@ -587,7 +702,21 @@ https://yanghao158640.github.io/competition-bootcamp/
                                     <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">Canvas</span>
                                 </div>
                                 <p class="text-xs text-slate-400 leading-relaxed mb-2">用原生JS + Canvas实现的坦克大战游戏，支持键盘操控、敌人生成、碰撞检测。</p>
-                                <a href="https://你的链接.netlify.app" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors" onclick="return confirm('请将链接替换为你的实际部署地址')">
+                                <a href="https://yanghao158640.github.io/competition-bootcamp/tank-game.html" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i>在线试玩
+                                </a>
+                            </div>
+                            <div class="project-card bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/[0.07] hover:border-cyan-500/20 hover:-translate-y-0.5 transition-all duration-300">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="rocket" class="w-4 h-4 text-cyan-400 shrink-0"></i>
+                                    <h3 class="text-white font-semibold text-sm">飞机大战</h3>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5 mb-2">
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">JavaScript</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">Canvas</span>
+                                </div>
+                                <p class="text-xs text-slate-400 leading-relaxed mb-2">画面炫酷、玩法多样的飞机大战小游戏，支持战机操控、敌机/BOSS刷新、碰撞与计分。</p>
+                                <a href="https://yanghao158640.github.io/plane-game/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors">
                                     <i data-lucide="external-link" class="w-3 h-3"></i>在线试玩
                                 </a>
                             </div>
@@ -643,7 +772,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="zap" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">技能矩阵</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                 <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
                     <div class="skill-item">
                         <div class="flex justify-between text-sm mb-1.5">
@@ -704,7 +833,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="heart" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">特长与爱好</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                 <div class="flex flex-wrap gap-2.5">
                     <span class="tag px-4 py-1.5 rounded-full text-sm font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400/30 transition-all duration-300">写作</span>
                     <span class="tag px-4 py-1.5 rounded-full text-sm font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400/30 transition-all duration-300">海报设计</span>
@@ -721,8 +850,8 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="images" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">个人掠影</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="mainGalleryGrid"></div>
+            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+                <div id="drift-wall" class="drift-wall" role="group" aria-label="3D漂移图片墙"></div>
             </div>
         </section>
 
@@ -733,13 +862,13 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <h2 class="text-xl font-extrabold text-white">获奖与证书</h2>
             </div>
             <div class="grid sm:grid-cols-2 gap-4">
-                <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+                <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                     <h3 class="text-white font-semibold text-sm mb-3 flex items-center gap-2">
                         <i data-lucide="list" class="w-4 h-4 text-cyan-400"></i>证书列表
                     </h3>
                     <ul class="space-y-2" id="certList"></ul>
                 </div>
-                <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+                <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                     <h3 class="text-white font-semibold text-sm mb-3 flex items-center gap-2">
                         <i data-lucide="image" class="w-4 h-4 text-cyan-400"></i>证书展示
                     </h3>
@@ -750,7 +879,7 @@ https://yanghao158640.github.io/competition-bootcamp/
 
         <!-- ========== CONTACT ========== -->
         <section id="contact" class="mt-10 reveal">
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-10 text-center">
+            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-10 text-center">
                 <i data-lucide="send" class="w-8 h-8 text-cyan-400 mx-auto mb-4"></i>
                 <h2 class="text-2xl font-extrabold text-white mb-2">联系我</h2>
                 <p class="text-slate-400 text-sm mb-6">如果有任何机会或合作意向，欢迎联系</p>
@@ -1084,95 +1213,330 @@ https://yanghao158640.github.io/competition-bootcamp/
         })();
     </script>
 
-    <!-- ===== Dynamic Background Animation (dark glow + flowing waves) ===== -->
+    <!-- ===== Ripple Distortion 波纹失真背景 (canvas 2D, React Bits 移植) ===== -->
     <script>
         (function() {
             'use strict';
-            const canvas = document.getElementById('bgCanvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
+            var container = document.getElementById('liquid-chrome');
+            if (!container) return;
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-            let W = 0,
-                H = 0;
-            const DPR = Math.min(window.devicePixelRatio || 1, 2);
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            container.appendChild(canvas);
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+
+            var RES = 0.42;              // 渲染降采样，四周 CSS 拉伸 -> 柔和水面
+            var W = 1, H = 1;
+            var tex = document.createElement('canvas');
+            var tctx = tex.getContext('2d');
+            var texImg = null;
+
+            var ripples = [];
+            var mouse = null;            // 涟漪源（像素坐标）
+            var lastRipple = 0;
+            var autoT = 0;
+
+            function rand(a, b) { return a + Math.random() * (b - a); }
+
+            // 生成中性深色水面底纹（非彩色光斑），保留足够明暗层次让涟漪可见
+            function buildTexture(t) {
+                var w = tex.width = W, h = tex.height = H;
+                tctx.globalCompositeOperation = 'source-over';
+                var g = tctx.createLinearGradient(0, 0, 0, h);
+                g.addColorStop(0, '#0c1a30');
+                g.addColorStop(0.5, '#0a1426');
+                g.addColorStop(1, '#050a16');
+                tctx.fillStyle = g;
+                tctx.fillRect(0, 0, w, h);
+                // 柔和冷色水面反光带（低饱和蓝灰），随时间缓慢流动，提供可视纹理
+                for (var i = 0; i < 3; i++) {
+                    var gx = w * (0.25 + 0.5 * (i / 2)) + Math.sin(t * 0.0001 + i * 2.1) * w * 0.2;
+                    var gy = h * (0.3 + 0.4 * (i / 2)) + Math.cos(t * 0.00012 + i * 1.3) * h * 0.2;
+                    var rr = Math.max(w, h) * (0.35 + 0.12 * i);
+                    var rg = tctx.createRadialGradient(gx, gy, 0, gx, gy, rr);
+                    rg.addColorStop(0, 'rgba(120,150,205,0.22)');
+                    rg.addColorStop(1, 'rgba(30,50,90,0)');
+                    tctx.fillStyle = rg;
+                    tctx.fillRect(gx - rr, gy - rr, rr * 2, rr * 2);
+                }
+                texImg = tctx.getImageData(0, 0, w, h);
+            }
 
             function resize() {
-                W = window.innerWidth;
-                H = window.innerHeight;
-                canvas.width = W * DPR;
-                canvas.height = H * DPR;
-                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+                W = Math.max(1, Math.floor((window.innerWidth || 1) * RES));
+                H = Math.max(1, Math.floor((window.innerHeight || 1) * RES));
+                canvas.width = W; canvas.height = H;
+                tex.width = W; tex.height = H;
+                img = ctx.createImageData(W, H);
+                buildTexture(performance.now());
             }
-            resize();
             window.addEventListener('resize', resize);
 
-            // 慢动作光晕团: 位置(x,y)、半径、主色、相位
-            const orbs = [
-                { x: 0.18, y: 0.22, r: 0.45, hue: 190, ph: 0 },
-                { x: 0.82, y: 0.30, r: 0.42, hue: 235, ph: 2.1 },
-                { x: 0.60, y: 0.85, r: 0.50, hue: 265, ph: 4.2 },
-                { x: 0.30, y: 0.75, r: 0.38, hue: 175, ph: 1.1 }
-            ];
-
-            // 流动波浪带参数
-            const waves = [
-                { amp: 0.05, speed: 0.28, lyr: 0.42, alpha: 0.16, hue: 188, off: 0 },
-                { amp: 0.07, speed: -0.20, lyr: 0.58, alpha: 0.13, hue: 232, off: 2.6 },
-                { amp: 0.04, speed: 0.34, lyr: 0.74, alpha: 0.11, hue: 262, off: 5.2 }
-            ];
-
-            let t = 0;
-
-            function draw() {
-                t += 0.016;
-                ctx.clearRect(0, 0, W, H);
-                const time = t;
-
-                // 1) 流动波浪带 (aurora 风格的半透明正弦光带)
-                waves.forEach(w => {
-                    ctx.beginPath();
-                    for (let x = 0; x <= W; x += 4) {
-                        const p = x / W;
-                        const y = H * (w.lyr + w.amp * Math.sin(p * Math.PI * 2.4 + time * w.speed + w.off) +
-                            w.amp * 0.5 * Math.sin(p * Math.PI * 6 + time * w.speed * 1.7 + w.off * 2));
-                        if (x === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                    }
-                    ctx.lineTo(W, H);
-                    ctx.lineTo(0, H);
-                    ctx.closePath();
-                    const g = ctx.createLinearGradient(0, 0, 0, H);
-                    g.addColorStop(0, 'hsla(' + w.hue + ', 85%, 55%, 0)');
-                    g.addColorStop(0.08, 'hsla(' + w.hue + ', 85%, 55%, ' + w.alpha + ')');
-                    g.addColorStop(w.lyr + 0.2, 'hsla(' + (w.hue + 30) + ', 80%, 60%, ' + (w.alpha * 0.4) + ')');
-                    g.addColorStop(1, 'hsla(' + w.hue + ', 80%, 55%, 0)');
-                    ctx.fillStyle = g;
-                    ctx.fill();
+            function addRipple(x, y) {
+                if (ripples.length > 20) ripples.shift();
+                ripples.push({
+                    x: x, y: y, birth: performance.now(), age: 0,
+                    radius: 5, phase: rand(0, Math.PI * 2),
+                    speed: rand(90, 135), amp: rand(7, 13), freq: rand(0.045, 0.075)
                 });
-
-                // 2) 动态光晕 (缓慢漂移+呼吸的发光圆)
-                ctx.globalCompositeOperation = 'lighter';
-                orbs.forEach(o => {
-                    const ox = W * (o.x + 0.055 * Math.sin(time * 0.22 + o.ph));
-                    const oy = H * (o.y + 0.055 * Math.cos(time * 0.18 + o.ph * 1.3));
-                    const r = Math.max(W, H) * o.r * (0.85 + 0.15 * Math.sin(time * 0.5 + o.ph));
-                    const g = ctx.createRadialGradient(ox, oy, 0, ox, oy, r);
-                    g.addColorStop(0, 'hsla(' + o.hue + ', 90%, 62%, 0.10)');
-                    g.addColorStop(0.5, 'hsla(' + (o.hue + 20) + ', 85%, 58%, 0.05)');
-                    g.addColorStop(1, 'hsla(' + o.hue + ', 85%, 55%, 0)');
-                    ctx.fillStyle = g;
-                    ctx.beginPath();
-                    ctx.arc(ox, oy, r, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                ctx.globalCompositeOperation = 'source-over';
-
-                requestAnimationFrame(draw);
             }
 
-            // 尊重用户减少动态偏好
-            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            if (!reduce) draw();
+            function spawnAuto() {
+                if (mouse) addRipple(mouse.x, mouse.y);
+                else addRipple(rand(0, W), rand(0, H));
+            }
+
+            var img = null;            // 在 resize 中按实际尺寸创建
+            var then = performance.now();
+
+            function render(t) {
+                var dt = Math.min(0.05, (t - then) / 1000 || 0.016);
+                then = t;
+
+                buildTexture(t);          // 光斑流动
+                var sx = texImg.data;
+
+                // 清理过期涟漪并更新半径/寿命
+                var diag = Math.sqrt(W * W + H * H);
+                var alive = [];
+                for (var i = 0; i < ripples.length; i++) {
+                    var r = ripples[i];
+                    r.age = t - r.birth;
+                    r.radius += r.speed * dt;
+                    r._life = Math.exp(-r.age * 0.0009);
+                    if (r.age < 4200 && r.radius < diag * 0.35) alive.push(r);
+                }
+                ripples = alive;
+
+                // 平滑产生涟漪，保证无鼠标时也有波纹光彩
+                autoT += dt;
+                if (autoT > 1.1) { autoT = 0; spawnAuto(); }
+                if (mouse) { lastRipple += dt; if (lastRipple > 0.13) { lastRipple = 0; addRipple(mouse.x, mouse.y); } }
+
+                var px = img.data, Wm = W - 1, Hm = H - 1, kN = ripples.length;
+                var k = 0;
+                for (var y = 0; y < H; y++) {
+                    for (var x = 0; x < W; x++) {
+                        var ox = 0, oy = 0, bri = 0;
+                        for (var j = 0; j < kN; j++) {
+                            var rp = ripples[j];
+                            var dx = x - rp.x, dy = y - rp.y;
+                            if (dx > rp.radius || dx < -rp.radius) continue;
+                            if (dy > rp.radius || dy < -rp.radius) continue;
+                            var d = Math.sqrt(dx * dx + dy * dy);
+                            if (d < rp.radius && d > 0.5) {
+                                var ph = (rp.radius - d) * rp.freq - rp.age * 0.0045;
+                                var wn = 1 - d / rp.radius;
+                                var wv = Math.sin(ph) * rp._life * wn;
+                                bri += wv * 0.9;                  // 波前高光 -> 亮暗波纹环
+                                var off = wv * rp.amp;
+                                ox += (dx / d) * off;
+                                oy += (dy / d) * off;
+                            }
+                        }
+                        var u = Math.round(x + ox), v = Math.round(y + oy);
+                        u = u < 0 ? 0 : (u > Wm ? Wm : u);
+                        v = v < 0 ? 0 : (v > Hm ? Hm : v);
+                        var s = (v * W + u) << 2, o = k << 2;
+                        var l = 1 + bri;                          // 亮带让涟漪清晰可见
+                        var r = sx[s] * l, g = sx[s + 1] * l, b = sx[s + 2] * l;
+                        px[o]   = r > 255 ? 255 : (r < 0 ? 0 : r);
+                        px[o+1] = g > 255 ? 255 : (g < 0 ? 0 : g);
+                        px[o+2] = b > 255 ? 255 : (b < 0 ? 0 : b);
+                        px[o+3] = 255;
+                        k++;
+                    }
+                }
+                ctx.putImageData(img, 0, 0);
+                requestAnimationFrame(render);
+            }
+
+            window.addEventListener('pointermove', function(e) {
+                var iw = window.innerWidth || 1, ih = window.innerHeight || 1;
+                mouse = { x: (e.clientX / iw) * W, y: (e.clientY / ih) * H };
+            });
+            window.addEventListener('pointerleave', function() { mouse = null; });
+
+            resize();
+            requestAnimationFrame(function(t) { then = t; requestAnimationFrame(render); });
+        })();
+    </script>
+
+    <!-- ===== DriftWall 3D 漂移图片墙 (原生 JS, React Bits 移植) ===== -->
+    <script>
+        (function() {
+            'use strict';
+            var root = document.getElementById('drift-wall');
+            if (!root) return;
+
+            var images = ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg'];
+            var items = images.map(function(f, i) { return { image: f, title: '掠影 ' + (i + 1) }; });
+
+            var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            var o = { columns: 4, tileWidth: 200, tileHeight: 132, gap: 18, tilt: 14, turn: -12, roll: 0, perspective: 1200, depth: 110, speed: 42, direction: 'up', variance: 0.5, parallax: 0.6 };
+
+            root.style.setProperty('--dw-tile-w', o.tileWidth + 'px');
+            root.style.setProperty('--dw-tile-h', o.tileHeight + 'px');
+            root.style.setProperty('--dw-gap', o.gap + 'px');
+            root.style.setProperty('--dw-radius', '14px');
+            root.style.setProperty('--dw-perspective', o.perspective + 'px');
+            root.style.setProperty('--dw-lift', '64px');
+            root.style.setProperty('--dw-dim', '0.55');
+            root.style.setProperty('--dw-gray', '0');
+            root.style.setProperty('--dw-overlay', '#060010');
+            root.style.setProperty('--dw-edge', '40%');
+
+            var columnItems = [];
+            for (var c = 0; c < o.columns; c++) { columnItems.push([]); }
+            items.forEach(function(it, i) { columnItems[i % o.columns].push(it); });
+            columnItems = columnItems.map(function(col) { return col.length ? col : items.slice(0, 1); });
+
+            var containerHeight = root.clientHeight || 600;
+            var unit = o.tileHeight + o.gap;
+            var meta = columnItems.map(function(col) {
+                var copyHeight = Math.max(unit, col.length * unit);
+                var copies = Math.max(2, Math.ceil((containerHeight * 1.6) / copyHeight) + 1);
+                return { copyHeight: copyHeight, copies: copies };
+            });
+
+            var dirSign = o.direction === 'up' ? 1 : -1;
+            var baseVel = columnItems.map(function(_, c) {
+                var alt = c % 2 === 0 ? 1 : -1;
+                var pseudo = ((c * 0.6180339887 + 0.35) % 1) * 2 - 1;
+                return o.speed * (1 + o.variance * pseudo) * dirSign * alt;
+            });
+
+            var offsets = meta.map(function(m, c) { return m.copyHeight * ((c * 0.37) % 1); });
+            var velocities = columnItems.map(function() { return 0; });
+
+            var plane = document.createElement('div');
+            plane.className = 'drift-wall__plane';
+            root.appendChild(plane);
+
+            // 列号辅助数据
+            var tracks = [];
+            var colIndex = {};
+            columnItems.forEach(function(col, c) {
+                var colEl = document.createElement('div');
+                colEl.className = 'drift-wall__col';
+                var track = document.createElement('div');
+                track.className = 'drift-wall__track';
+                tracks.push(track);
+                for (var ci = 0; ci < meta[c].copies; ci++) {
+                    col.forEach(function(item, ii) {
+                        var id = c + '-' + ci + '-' + ii;
+                        colIndex[id] = c;
+                        var tile = document.createElement('div');
+                        tile.className = 'drift-wall__tile';
+                        tile.setAttribute('data-tile-id', id);
+                        tile.tabIndex = 0;
+                        tile.setAttribute('role', 'button');
+                        tile.setAttribute('aria-label', item.title || 'tile');
+                        var inner = document.createElement('span');
+                        inner.className = 'drift-wall__inner';
+                        var img = document.createElement('img');
+                        img.src = item.image;
+                        img.alt = item.title || '';
+                        img.setAttribute('loading', 'lazy');
+                        img.setAttribute('decoding', 'async');
+                        img.draggable = false;
+                        var ov = document.createElement('span');
+                        ov.className = 'drift-wall__overlay';
+                        ov.setAttribute('aria-hidden', 'true');
+                        inner.appendChild(img);
+                        inner.appendChild(ov);
+                        tile.appendChild(inner);
+                        tile.addEventListener('click', function() { activate(id); });
+                        track.appendChild(tile);
+                    });
+                }
+                colEl.appendChild(track);
+                plane.appendChild(colEl);
+            });
+
+            var activeTile = null;
+            var hoveredCol = -1;
+            var wallHovered = false;
+            var pointer = { x: 0, y: 0 };
+            var pointerD = { x: 0, y: 0 };
+            var lastTs = null;
+
+            function setActiveTile(id) {
+                if (activeTile) activeTile.classList.remove('is-active');
+                activeTile = document.querySelector('.drift-wall__tile[data-tile-id="' + id + '"]');
+                if (activeTile) activeTile.classList.add('is-active');
+            }
+            function activate(id) {
+                hoveredCol = typeof colIndex[id] !== 'undefined' ? colIndex[id] : -1;
+                setActiveTile(id);
+            }
+            function release() {
+                hoveredCol = -1;
+                if (activeTile) { activeTile.classList.remove('is-active'); activeTile = null; }
+            }
+
+            root.addEventListener('pointermove', function(e) {
+                var rect = root.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                if (o.parallax > 0 && !reduced) {
+                    pointer = {
+                        x: (e.clientX - rect.left) / rect.width - 0.5,
+                        y: (e.clientY - rect.top) / rect.height - 0.5
+                    };
+                }
+                var hit = document.elementFromPoint(e.clientX, e.clientY);
+                var tile = hit && hit.closest ? hit.closest('[data-tile-id]') : null;
+                if (tile) activate(tile.getAttribute('data-tile-id'));
+                else release();
+            });
+            root.addEventListener('pointerenter', function() { wallHovered = true; });
+            root.addEventListener('pointerleave', function() {
+                wallHovered = false;
+                pointer = { x: 0, y: 0 };
+                release();
+            });
+
+            function animate(ts) {
+                if (lastTs === null) lastTs = ts;
+                var dt = Math.min(0.05, Math.max(0, (ts - lastTs) / 1000));
+                lastTs = ts;
+
+                var maxTilt = o.parallax * 8;
+                var damp = 1 - Math.exp(-dt / 0.12);
+                pointerD.x += ((pointer.x * maxTilt) - pointerD.x) * damp;
+                pointerD.y += ((-pointer.y * maxTilt) - pointerD.y) * damp;
+                plane.style.transform =
+                    'translate(-50%,-50%) scale(1.18) ' +
+                    'rotateX(' + (o.tilt + pointerD.y) + 'deg) ' +
+                    'rotateY(' + (o.turn + pointerD.x) + 'deg) ' +
+                    'rotateZ(' + o.roll + 'deg) ' +
+                    'translateZ(' + (-o.depth) + 'px)';
+
+                if (!reduced) {
+                    for (var c = 0; c < tracks.length; c++) {
+                        var m = meta[c];
+                        if (!m) continue;
+                        var factor = (hoveredCol === c) ? 0 : 1;
+                        var target = baseVel[c] * factor;
+                        var ease = 1 - Math.exp(-dt / (target === 0 ? 0.16 : 0.28));
+                        velocities[c] += (target - velocities[c]) * ease;
+                        var next = ((offsets[c] + velocities[c] * dt) % m.copyHeight + m.copyHeight) % m.copyHeight;
+                        offsets[c] = next;
+                        tracks[c].style.transform = 'translate3d(0,' + (-next) + 'px,0)';
+                    }
+                }
+                requestAnimationFrame(animate);
+            }
+            // 立即应用初始 3D 姿态(不依赖 rAF), 避免首帧前为 none
+            plane.style.transform =
+                'translate(-50%,-50%) scale(1.18) ' +
+                'rotateX(' + o.tilt + 'deg) rotateY(' + o.turn + 'deg) ' +
+                'rotateZ(' + o.roll + 'deg) translateZ(' + (-o.depth) + 'px)';
+            requestAnimationFrame(animate);
         })();
     </script>
 
