@@ -215,7 +215,7 @@
 
         /* ===== Print ===== */
         @media print {
-            .glow-blob-1, .glow-blob-2, .lightbox-overlay, .toast-container,
+            .glow-blob-1, .glow-blob-2, #bgCanvas, .lightbox-overlay, .toast-container,
             .nav-mobile, .nav-overlay, .hamburger-btn { display: none !important; }
             body { background: #fff !important; color: #1e293b !important; }
             .glass-card { background: #fff !important; border: 1px solid #e2e8f0 !important; backdrop-filter: none !important; }
@@ -230,6 +230,16 @@
             .gallery-item:hover img { transform: none !important; }
             .skill-bar-fill::after { animation: none !important; }
         }
+    
+        /* ===== 高端科技粒子背景 (自包含, 零外部依赖) ===== */
+        #bgCanvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 
@@ -238,6 +248,8 @@
     <!-- ===== Background Glow Blobs ===== -->
     <div class="glow-blob-1" aria-hidden="true"></div>
     <div class="glow-blob-2" aria-hidden="true"></div>
+    <!-- ===== 高端科技粒子背景 Canvas ===== -->
+    <canvas id="bgCanvas" aria-hidden="true"></canvas>
 
     <!-- ===== Mobile Nav Overlay ===== -->
     <div class="nav-overlay" id="navOverlay" aria-hidden="true"></div>
@@ -1016,6 +1028,178 @@
 
             console.log('✅ 简历重构完毕 | 证书8项 | 图片8张 | Tailwind + Lucide 就绪');
         })();
+    </script>
+
+
+    <script>
+/* ============================================================
+ * 高端科技粒子背景 (自包含 Canvas, 零外部依赖, 兼容移动端)
+ * - 粒子星座连线 + 鼠标/手指磁吸交互 + 呼吸闪烁
+ * - 自动适配屏幕密度, 隐藏标签页自动暂停省电
+ * - 尊重系统"减少动态效果"设置
+ * ============================================================ */
+(function () {
+  'use strict';
+  var canvas = document.getElementById('bgCanvas');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+
+  var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var W = 0, H = 0, DPR = 1;
+  var particles = [];
+  var mouse = { x: -9999, y: -9999, active: false };
+
+  // 颜色池: 青色 / 靛蓝 / 天蓝 (与站点主题一致)
+  var COLORS = ['34,211,238', '129,140,248', '96,165,250'];
+  var LINK_DIST = 130;      // 粒子间连线距离
+  var MOUSE_RADIUS = 180;   // 鼠标磁吸半径
+  var MOUSE_LINK = 160;     // 鼠标连线距离
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    initParticles();
+  }
+
+  function initParticles() {
+    // 密度: 约每 16000px² 一个, 上限 100, 移动端自动减少
+    var count = Math.max(24, Math.min(Math.floor((W * H) / 16000), 100));
+    particles = [];
+    for (var i = 0; i < count; i++) {
+      particles.push({
+        x: rand(0, W),
+        y: rand(0, H),
+        vx: rand(-0.35, 0.35),
+        vy: rand(-0.35, 0.35),
+        r: rand(0.6, 1.9),
+        color: COLORS[(Math.random() * COLORS.length) | 0]
+      });
+    }
+  }
+
+  function step() {
+    var i, p, dx, dy, dist, sp;
+    for (i = 0; i < particles.length; i++) {
+      p = particles[i];
+      // 鼠标/手指磁吸
+      if (mouse.active) {
+        dx = mouse.x - p.x;
+        dy = mouse.y - p.y;
+        dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MOUSE_RADIUS && dist > 0.001) {
+          var force = (1 - dist / MOUSE_RADIUS) * 0.018;
+          p.vx += (dx / dist) * force;
+          p.vy += (dy / dist) * force;
+        }
+      }
+      // 轻微阻尼 + 限速, 保证丝滑
+      p.vx *= 0.992;
+      p.vy *= 0.992;
+      sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+      if (sp > 1.2) { p.vx *= 1.2 / sp; p.vy *= 1.2 / sp; }
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < -12) p.x = W + 12; else if (p.x > W + 12) p.x = -12;
+      if (p.y < -12) p.y = H + 12; else if (p.y > H + 12) p.y = -12;
+    }
+    draw();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    var i, j, a, b, dx, dy, dist, alpha;
+
+    // 1) 粒子间连线 (星座网络)
+    for (i = 0; i < particles.length; i++) {
+      a = particles[i];
+      for (j = i + 1; j < particles.length; j++) {
+        b = particles[j];
+        dx = a.x - b.x; dy = a.y - b.y;
+        dist = dx * dx + dy * dy;
+        if (dist < LINK_DIST * LINK_DIST) {
+          alpha = (1 - Math.sqrt(dist) / LINK_DIST) * 0.20;
+          ctx.strokeStyle = 'rgba(125, 211, 252,' + alpha.toFixed(3) + ')';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+      // 2) 与鼠标连线
+      if (mouse.active) {
+        dx = a.x - mouse.x; dy = a.y - mouse.y;
+        dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MOUSE_LINK) {
+          alpha = (1 - dist / MOUSE_LINK) * 0.40;
+          ctx.strokeStyle = 'rgba(34, 211, 238,' + alpha.toFixed(3) + ')';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(mouse.x, mouse.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 3) 粒子本体 (呼吸闪烁)
+    for (i = 0; i < particles.length; i++) {
+      a = particles[i];
+      var twinkle = 0.55 + 0.45 * Math.sin(Date.now() / 900 + i * 1.7);
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(' + a.color + ',' + (0.5 + 0.3 * twinkle).toFixed(3) + ')';
+      ctx.fill();
+    }
+  }
+
+  var rafId = null;
+  function loop() {
+    step();
+    rafId = window.requestAnimationFrame(loop);
+  }
+
+  function start() {
+    if (prefersReduced) { draw(); return; } // 减少动态: 只画静态一帧
+    if (rafId == null) { rafId = window.requestAnimationFrame(loop); }
+  }
+  function stop() {
+    if (rafId != null) { window.cancelAnimationFrame(rafId); rafId = null; }
+  }
+
+  // 交互事件
+  window.addEventListener('mousemove', function (e) {
+    mouse.x = e.clientX; mouse.y = e.clientY; mouse.active = true;
+  }, { passive: true });
+  window.addEventListener('mouseout', function (e) {
+    if (!e.relatedTarget) { mouse.active = false; }
+  });
+  window.addEventListener('touchstart', function (e) {
+    if (e.touches && e.touches[0]) { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; mouse.active = true; }
+  }, { passive: true });
+  window.addEventListener('touchmove', function (e) {
+    if (e.touches && e.touches[0]) { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; mouse.active = true; }
+  }, { passive: true });
+  window.addEventListener('touchend', function () { mouse.active = false; });
+  window.addEventListener('resize', function () { resize(); });
+
+  // 标签页隐藏时暂停, 省电
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { stop(); } else { start(); }
+  });
+
+  resize();
+  start();
+})();
     </script>
 
 </body>
