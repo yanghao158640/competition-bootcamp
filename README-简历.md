@@ -64,6 +64,11 @@ https://yanghao158640.github.io/competition-bootcamp/
     <!-- Lucide Icons (本地同源) -->
     <script src="lucide.js"></script>
 
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
     <style>
         /* ===== Base ===== */
         html { scroll-behavior: smooth; }
@@ -101,21 +106,22 @@ https://yanghao158640.github.io/competition-bootcamp/
             animation: float 10s ease-in-out infinite alternate-reverse;
         }
 
-        /* ===== LiquidChrome 动态背景 (液态光效) ===== */
+        /* ===== 波纹失真背景 (铺满整个卡片背景, 置于文字/头像下层) ===== */
         #liquid-chrome {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 0;
-            pointer-events: none;
+            z-index: -1;             /* 位于 body 背景之上、内容之下, 自然融入卡片背景 */
+            pointer-events: none;    /* 不遮挡文字/交互 */
             background: #030712;
         }
         #liquid-chrome canvas {
             display: block;
             width: 100%;
             height: 100%;
+            opacity: 0.6;            /* 降低波纹透明度, 经卡片蒙层柔和透出, 融入背景视觉 */
         }
 
         /* ===== DriftWall 3D 漂移图片墙 (React Bits 移植) ===== */
@@ -413,6 +419,13 @@ https://yanghao158640.github.io/competition-bootcamp/
             .gallery-item:hover img { transform: none !important; }
             .skill-bar-fill::after { animation: none !important; }
         }
+
+        /* ===== 内容卡片毛玻璃（规范） ===== */
+        /* 卡片保留40%半透明底以透出波纹：取消磨砂模糊，避免挡住波纹细节 */
+        .glass-card, .project-card, .highlight-card {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
     </style>
 </head>
 
@@ -465,7 +478,7 @@ https://yanghao158640.github.io/competition-bootcamp/
 
         <!-- ========== HERO ========== -->
         <section id="hero" class="reveal">
-            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-12 text-center">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-12 text-center">
                 <!-- Avatar -->
                 <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br from-cyan-400 to-indigo-500 flex items-center justify-center text-2xl font-extrabold text-white shadow-lg shadow-cyan-500/20">
                     杨
@@ -501,19 +514,19 @@ https://yanghao158640.github.io/competition-bootcamp/
         <!-- ========== HIGHLIGHTS ========== -->
         <section id="highlights" class="mt-6 reveal">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                <div class="highlight-card glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">7+</div>
                     <div class="text-xs text-slate-400 mt-1">款AI工具熟练运用</div>
                 </div>
-                <div class="highlight-card glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">8</div>
                     <div class="text-xs text-slate-400 mt-1">项AI领域认证</div>
                 </div>
-                <div class="highlight-card glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">多个</div>
                     <div class="text-xs text-slate-400 mt-1">Python实践项目</div>
                 </div>
-                <div class="highlight-card glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">1篇+</div>
                     <div class="text-xs text-slate-400 mt-1">文章被校内文学社刊采用</div>
                 </div>
@@ -526,7 +539,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="briefcase" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">经历</h2>
             </div>
-            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
                 <!-- Tabs -->
                 <div class="flex border-b border-white/5" role="tablist" id="expTabs">
                     <button class="tab-btn flex-1 px-4 py-3.5 text-sm font-medium text-slate-400 border-b-2 border-transparent" role="tab" aria-selected="true" aria-controls="expPanel0">
@@ -614,7 +627,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="folder-git-2" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">实践项目</h2>
             </div>
-            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
                 <!-- Tabs -->
                 <div class="flex border-b border-white/5" role="tablist" id="projTabs">
                     <button class="tab-btn flex-1 px-4 py-3.5 text-sm font-medium text-slate-400 border-b-2 border-transparent" role="tab" aria-selected="true" aria-controls="projPanel0">
@@ -723,14 +736,14 @@ https://yanghao158640.github.io/competition-bootcamp/
                             <div class="project-card bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/[0.07] hover:border-cyan-500/20 hover:-translate-y-0.5 transition-all duration-300">
                                 <div class="flex items-center gap-2 mb-2">
                                     <i data-lucide="presentation" class="w-4 h-4 text-cyan-400 shrink-0"></i>
-                                    <h3 class="text-white font-semibold text-sm">PPT作品集</h3>
+                                    <h3 class="text-white font-semibold text-sm">吴恩达《机器学习》学习汇报</h3>
                                 </div>
                                 <div class="flex flex-wrap gap-1.5 mb-2">
-                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">PowerPoint</span>
-                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">AI辅助</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">机器学习</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">演示文稿</span>
                                 </div>
-                                <p class="text-xs text-slate-400 leading-relaxed mb-2">AI辅助生成的演示文稿，涵盖校园活动、学习汇报等主题，排版精美逻辑清晰。</p>
-                                <a href="https://你的链接.netlify.app" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors" onclick="return confirm('请将链接替换为你的实际部署地址')">
+                                <p class="text-xs text-slate-400 leading-relaxed mb-2">13 页 HTML 交互式演示文稿，复盘吴恩达《机器学习》课程：知识消化路径、六大算法实操、五步学习法与阶段成果。</p>
+                                <a href="https://yanghao158640.github.io/competition-bootcamp/ml-report/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors">
                                     <i data-lucide="external-link" class="w-3 h-3"></i>在线查看
                                 </a>
                             </div>
@@ -772,7 +785,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="zap" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">技能矩阵</h2>
             </div>
-            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                 <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
                     <div class="skill-item">
                         <div class="flex justify-between text-sm mb-1.5">
@@ -833,7 +846,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="heart" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">特长与爱好</h2>
             </div>
-            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                 <div class="flex flex-wrap gap-2.5">
                     <span class="tag px-4 py-1.5 rounded-full text-sm font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400/30 transition-all duration-300">写作</span>
                     <span class="tag px-4 py-1.5 rounded-full text-sm font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400/30 transition-all duration-300">海报设计</span>
@@ -850,7 +863,7 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <i data-lucide="images" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">个人掠影</h2>
             </div>
-            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                 <div id="drift-wall" class="drift-wall" role="group" aria-label="3D漂移图片墙"></div>
             </div>
         </section>
@@ -862,13 +875,13 @@ https://yanghao158640.github.io/competition-bootcamp/
                 <h2 class="text-xl font-extrabold text-white">获奖与证书</h2>
             </div>
             <div class="grid sm:grid-cols-2 gap-4">
-                <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+                <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                     <h3 class="text-white font-semibold text-sm mb-3 flex items-center gap-2">
                         <i data-lucide="list" class="w-4 h-4 text-cyan-400"></i>证书列表
                     </h3>
                     <ul class="space-y-2" id="certList"></ul>
                 </div>
-                <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+                <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                     <h3 class="text-white font-semibold text-sm mb-3 flex items-center gap-2">
                         <i data-lucide="image" class="w-4 h-4 text-cyan-400"></i>证书展示
                     </h3>
@@ -879,7 +892,7 @@ https://yanghao158640.github.io/competition-bootcamp/
 
         <!-- ========== CONTACT ========== -->
         <section id="contact" class="mt-10 reveal">
-            <div class="glass-card bg-slate-900/20 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-10 text-center">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-10 text-center">
                 <i data-lucide="send" class="w-8 h-8 text-cyan-400 mx-auto mb-4"></i>
                 <h2 class="text-2xl font-extrabold text-white mb-2">联系我</h2>
                 <p class="text-slate-400 text-sm mb-6">如果有任何机会或合作意向，欢迎联系</p>
@@ -1392,6 +1405,28 @@ https://yanghao158640.github.io/competition-bootcamp/
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             gl.bindTexture(gl.TEXTURE_2D, null);
+
+            // 接入 React Bits Ripple Distortion 演示所用的背景图, 加载完成后覆盖渐变兜底纹理
+            var bgImg = new Image();
+            bgImg.crossOrigin = 'anonymous';
+            bgImg.decoding = 'async';
+            bgImg.onload = function() {
+                var iw = bgImg.naturalWidth, ih = bgImg.naturalHeight;
+                if (!iw || !ih) return;
+                // 先缩放到常见纹理尺寸上限以内，避免大图超出 GPU MAX_TEXTURE_SIZE
+                var max = 1600, k = Math.min(1, max / Math.max(iw, ih));
+                var cw = Math.max(1, Math.round(iw * k)), ch = Math.max(1, Math.round(ih * k));
+                var tmp = document.createElement('canvas');
+                tmp.width = cw; tmp.height = ch;
+                tmp.getContext('2d').drawImage(bgImg, 0, 0, cw, ch);
+                bgW = cw; bgH = ch;
+                try {
+                    gl.bindTexture(gl.TEXTURE_2D, bgTex);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tmp);
+                    gl.bindTexture(gl.TEXTURE_2D, null);
+                } catch (e) {}
+            };
+            bgImg.src = 'https://images.unsplash.com/photo-1782977389500-dd7adad33ebe?q=80&w=3416&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
             // ---------- 位移贴图（低分辨率）+ 帧缓冲 ----------
             var dispTex = gl.createTexture();
