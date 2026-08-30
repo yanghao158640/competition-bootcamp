@@ -12,6 +12,11 @@
     <!-- Lucide Icons (本地同源) -->
     <script src="lucide.js"></script>
 
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
     <style>
         /* ===== Base ===== */
         html { scroll-behavior: smooth; }
@@ -47,6 +52,138 @@
             pointer-events: none;
             z-index: 0;
             animation: float 10s ease-in-out infinite alternate-reverse;
+        }
+
+        /* ===== 波纹失真背景 (铺满整个卡片背景, 置于文字/头像下层) ===== */
+        #liquid-chrome {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;             /* 位于 body 背景之上、内容之下, 自然融入卡片背景 */
+            pointer-events: none;    /* 不遮挡文字/交互 */
+            background: #030712;
+        }
+        #liquid-chrome canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            opacity: 0.6;            /* 降低波纹透明度, 经卡片蒙层柔和透出, 融入背景视觉 */
+        }
+
+        /* ===== DriftWall 3D 漂移图片墙 (React Bits 移植) ===== */
+        .drift-wall {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            perspective: var(--dw-perspective, 1200px);
+            perspective-origin: 50% 50%;
+            --dw-tile-w: 200px;
+            --dw-tile-h: 132px;
+            --dw-gap: 18px;
+            --dw-radius: 14px;
+            --dw-lift: 64px;
+            --dw-dim: 0.55;
+            --dw-gray: 0;
+            --dw-overlay: #060010;
+            --dw-edge: 40%;
+            -webkit-mask-image:
+                radial-gradient(ellipse 78% 82% at 50% 46%, #000 var(--dw-edge), transparent 100%),
+                linear-gradient(to top, #000 var(--dw-edge), transparent 100%);
+            -webkit-mask-composite: source-in;
+            mask-image:
+                radial-gradient(ellipse 78% 82% at 50% 46%, #000 var(--dw-edge), transparent 100%),
+                linear-gradient(to top, #000 var(--dw-edge), transparent 100%);
+            mask-composite: intersect;
+        }
+        .drift-wall__plane {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            display: flex;
+            flex-direction: row;
+            transform-style: preserve-3d;
+            cursor: pointer;
+            transform-origin: 50% 50%;
+            will-change: transform;
+        }
+        .drift-wall__col {
+            position: relative;
+            width: calc(var(--dw-tile-w) + var(--dw-gap));
+            transform-style: preserve-3d;
+        }
+        .drift-wall__track {
+            display: flex;
+            flex-direction: column;
+            will-change: transform;
+            transform-style: preserve-3d;
+        }
+        .drift-wall__tile {
+            position: relative;
+            display: block;
+            width: 100%;
+            height: calc(var(--dw-tile-h) + var(--dw-gap));
+            flex: 0 0 auto;
+            outline: none;
+            transform-style: preserve-3d;
+        }
+        .drift-wall__inner {
+            position: absolute;
+            inset: calc(var(--dw-gap) / 2);
+            display: block;
+            border-radius: var(--dw-radius);
+            overflow: hidden;
+            background: #0b0b12;
+            opacity: var(--dw-dim);
+            transform: translateZ(0);
+            pointer-events: none;
+            transition:
+                transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .drift-wall__tile img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            filter: grayscale(var(--dw-gray)) saturate(0.92);
+            transition: filter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        .drift-wall__overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--dw-overlay);
+            opacity: 0.42;
+            pointer-events: none;
+            transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .drift-wall__tile.is-active .drift-wall__inner,
+        .drift-wall__tile:focus-visible .drift-wall__inner {
+            opacity: 1;
+            transform: translateZ(var(--dw-lift));
+            box-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.7);
+        }
+        .drift-wall__tile.is-active img,
+        .drift-wall__tile:focus-visible img {
+            filter: grayscale(0) saturate(1.05);
+        }
+        .drift-wall__tile.is-active .drift-wall__overlay,
+        .drift-wall__tile:focus-visible .drift-wall__overlay {
+            opacity: 0;
+        }
+        .drift-wall__tile:focus-visible .drift-wall__inner {
+            box-shadow:
+                0 24px 60px -18px rgba(0, 0, 0, 0.7),
+                0 0 0 2px rgba(255, 255, 255, 0.9);
+        }
+        #drift-wall {
+            height: 72vh;
+            min-height: 420px;
         }
 
         /* ===== Reveal scroll animation ===== */
@@ -215,7 +352,7 @@
 
         /* ===== Print ===== */
         @media print {
-            .glow-blob-1, .glow-blob-2, .lightbox-overlay, .toast-container,
+            .glow-blob-1, .glow-blob-2, #liquid-chrome, .lightbox-overlay, .toast-container,
             .nav-mobile, .nav-overlay, .hamburger-btn { display: none !important; }
             body { background: #fff !important; color: #1e293b !important; }
             .glass-card { background: #fff !important; border: 1px solid #e2e8f0 !important; backdrop-filter: none !important; }
@@ -230,14 +367,20 @@
             .gallery-item:hover img { transform: none !important; }
             .skill-bar-fill::after { animation: none !important; }
         }
+
+        /* ===== 内容卡片毛玻璃（规范） ===== */
+        /* 卡片保留40%半透明底以透出波纹：取消磨砂模糊，避免挡住波纹细节 */
+        .glass-card, .project-card, .highlight-card {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
     </style>
 </head>
 
 <body class="bg-[#030712] text-slate-200 font-jakarta min-h-screen overflow-x-hidden relative">
 
-    <!-- ===== Background Glow Blobs ===== -->
-    <div class="glow-blob-1" aria-hidden="true"></div>
-    <div class="glow-blob-2" aria-hidden="true"></div>
+    <!-- ===== LiquidChrome 动态背景 (液态光效) ===== -->
+    <div id="liquid-chrome" aria-hidden="true"></div>
 
     <!-- ===== Mobile Nav Overlay ===== -->
     <div class="nav-overlay" id="navOverlay" aria-hidden="true"></div>
@@ -283,7 +426,7 @@
 
         <!-- ========== HERO ========== -->
         <section id="hero" class="reveal">
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-12 text-center">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-12 text-center">
                 <!-- Avatar -->
                 <div class="w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br from-cyan-400 to-indigo-500 flex items-center justify-center text-2xl font-extrabold text-white shadow-lg shadow-cyan-500/20">
                     杨
@@ -304,14 +447,13 @@
                 <div class="flex flex-wrap justify-center gap-2">
                     <span class="px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">河南城建学院</span>
                     <span class="px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">2026级</span>
-                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">高考493分</span>
                 </div>
                 <!-- Professional Summary -->
                 <div class="mt-6 pt-5 border-t border-white/5">
                     <p class="text-sm text-slate-300 leading-relaxed max-w-2xl mx-auto">
-                        环境工程专业本科生，辅修<span class="text-cyan-300 font-medium">AI工具应用</span>方向。
-                        熟练运用 <span class="text-cyan-300 font-medium">7+</span> 款AI工具，持有 <span class="text-cyan-300 font-medium">8</span> 项AI领域认证。
-                        具备 Python 脚本开发、小游戏制作、海报设计等实践能力，能快速上手新技术并产出落地成果。
+                        能为你做什么：熟练运用 <span class="text-cyan-300 font-medium">7+</span> 款AI工具与 Python，把你的想法快速落地成
+                        <span class="text-cyan-300 font-medium">网站、小游戏、自动化脚本、海报与PPT</span>。
+                        擅长快速上手新技术、低成本产出可用成果——你来提需求，我来帮你实现。
                     </p>
                 </div>
             </div>
@@ -320,19 +462,19 @@
         <!-- ========== HIGHLIGHTS ========== -->
         <section id="highlights" class="mt-6 reveal">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                <div class="highlight-card glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">7+</div>
                     <div class="text-xs text-slate-400 mt-1">款AI工具熟练运用</div>
                 </div>
-                <div class="highlight-card glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">8</div>
                     <div class="text-xs text-slate-400 mt-1">项AI领域认证</div>
                 </div>
-                <div class="highlight-card glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">多个</div>
                     <div class="text-xs text-slate-400 mt-1">Python实践项目</div>
                 </div>
-                <div class="highlight-card glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
+                <div class="highlight-card glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-xl p-5 text-center hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
                     <div class="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">1篇+</div>
                     <div class="text-xs text-slate-400 mt-1">文章被校内文学社刊采用</div>
                 </div>
@@ -345,7 +487,7 @@
                 <i data-lucide="briefcase" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">经历</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
                 <!-- Tabs -->
                 <div class="flex border-b border-white/5" role="tablist" id="expTabs">
                     <button class="tab-btn flex-1 px-4 py-3.5 text-sm font-medium text-slate-400 border-b-2 border-transparent" role="tab" aria-selected="true" aria-controls="expPanel0">
@@ -399,7 +541,7 @@
                                 </div>
                                 <div class="flex-1">
                                     <h3 class="text-white font-semibold">河南城建学院 · 环境工程专业</h3>
-                                    <p class="text-sm text-slate-400 mt-1">2026级本科生 · 高考 493 分，全省位次前 20%</p>
+                                    <p class="text-sm text-slate-400 mt-1">2026级本科生 · 专注环境工程与 AI 工具应用，用技术把想法落地</p>
                                 </div>
                             </div>
                             <div class="flex gap-4">
@@ -433,7 +575,7 @@
                 <i data-lucide="folder-git-2" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">实践项目</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
                 <!-- Tabs -->
                 <div class="flex border-b border-white/5" role="tablist" id="projTabs">
                     <button class="tab-btn flex-1 px-4 py-3.5 text-sm font-medium text-slate-400 border-b-2 border-transparent" role="tab" aria-selected="true" aria-controls="projPanel0">
@@ -521,7 +663,21 @@
                                     <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">Canvas</span>
                                 </div>
                                 <p class="text-xs text-slate-400 leading-relaxed mb-2">用原生JS + Canvas实现的坦克大战游戏，支持键盘操控、敌人生成、碰撞检测。</p>
-                                <a href="https://你的链接.netlify.app" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors" onclick="return confirm('请将链接替换为你的实际部署地址')">
+                                <a href="https://yanghao158640.github.io/competition-bootcamp/tank-game.html" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i>在线试玩
+                                </a>
+                            </div>
+                            <div class="project-card bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/[0.07] hover:border-cyan-500/20 hover:-translate-y-0.5 transition-all duration-300">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="rocket" class="w-4 h-4 text-cyan-400 shrink-0"></i>
+                                    <h3 class="text-white font-semibold text-sm">飞机大战</h3>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5 mb-2">
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">JavaScript</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">Canvas</span>
+                                </div>
+                                <p class="text-xs text-slate-400 leading-relaxed mb-2">画面炫酷、玩法多样的飞机大战小游戏，支持战机操控、敌机/BOSS刷新、碰撞与计分。</p>
+                                <a href="https://yanghao158640.github.io/plane-game/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors">
                                     <i data-lucide="external-link" class="w-3 h-3"></i>在线试玩
                                 </a>
                             </div>
@@ -577,7 +733,7 @@
                 <i data-lucide="zap" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">技能矩阵</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                 <div class="grid sm:grid-cols-2 gap-x-8 gap-y-4">
                     <div class="skill-item">
                         <div class="flex justify-between text-sm mb-1.5">
@@ -638,7 +794,7 @@
                 <i data-lucide="heart" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">特长与爱好</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                 <div class="flex flex-wrap gap-2.5">
                     <span class="tag px-4 py-1.5 rounded-full text-sm font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400/30 transition-all duration-300">写作</span>
                     <span class="tag px-4 py-1.5 rounded-full text-sm font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400/30 transition-all duration-300">海报设计</span>
@@ -655,8 +811,8 @@
                 <i data-lucide="images" class="w-5 h-5 text-cyan-400"></i>
                 <h2 class="text-xl font-extrabold text-white">个人掠影</h2>
             </div>
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="mainGalleryGrid"></div>
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+                <div id="drift-wall" class="drift-wall" role="group" aria-label="3D漂移图片墙"></div>
             </div>
         </section>
 
@@ -667,13 +823,13 @@
                 <h2 class="text-xl font-extrabold text-white">获奖与证书</h2>
             </div>
             <div class="grid sm:grid-cols-2 gap-4">
-                <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+                <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                     <h3 class="text-white font-semibold text-sm mb-3 flex items-center gap-2">
                         <i data-lucide="list" class="w-4 h-4 text-cyan-400"></i>证书列表
                     </h3>
                     <ul class="space-y-2" id="certList"></ul>
                 </div>
-                <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
+                <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-6">
                     <h3 class="text-white font-semibold text-sm mb-3 flex items-center gap-2">
                         <i data-lucide="image" class="w-4 h-4 text-cyan-400"></i>证书展示
                     </h3>
@@ -684,7 +840,7 @@
 
         <!-- ========== CONTACT ========== -->
         <section id="contact" class="mt-10 reveal">
-            <div class="glass-card bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-10 text-center">
+            <div class="glass-card bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 sm:p-10 text-center">
                 <i data-lucide="send" class="w-8 h-8 text-cyan-400 mx-auto mb-4"></i>
                 <h2 class="text-2xl font-extrabold text-white mb-2">联系我</h2>
                 <p class="text-slate-400 text-sm mb-6">如果有任何机会或合作意向，欢迎联系</p>
@@ -1015,6 +1171,575 @@
             }
 
             console.log('✅ 简历重构完毕 | 证书8项 | 图片8张 | Tailwind + Lucide 就绪');
+        })();
+    </script>
+
+    <!-- ===== Ripple Distortion 波纹失真背景 (原生 WebGL, 忠实移植自 React Bits) ===== -->
+    <script>
+        (function() {
+            'use strict';
+            var container = document.getElementById('liquid-chrome');
+            if (!container) return;
+            var REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+            var canvas = document.createElement('canvas');
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            var gl = canvas.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false })
+                || canvas.getContext('experimental-webgl');
+            if (!gl) return;
+            var ext = gl.getExtension('ANGLE_instanced_arrays');
+            if (!ext) return;
+            container.appendChild(canvas);
+
+            // ---------- 配置 ----------
+            var MAX_WAVES = 100, START_SCALE = 1.5, LIFE_CONSTANT = Math.log(500);
+            var P = {
+                strength: 0.28, swirl: 1, rings: 4, spread: 5, fade: 3, spacing: 8,
+                dispersion: 0.12, glint: 0.8, tint: '#56c8ff', tintAmount: 0.15,
+                highlight: '#ffffff', grayscale: 0, brushSize: 150, quality: 0.7, clickStrength: 2
+            };
+
+            // ---------- 着色器（原样借用 React Bits RippleDistortion） ----------
+            var waveVertex = [
+                'precision highp float;',
+                'attribute vec2 position;',
+                'attribute vec2 uv;',
+                'attribute vec2 iOffset;',
+                'attribute vec2 iScale;',
+                'attribute float iOpacity;',
+                'varying vec2 vUv;',
+                'varying float vOpacity;',
+                'void main() { vUv = uv; vOpacity = iOpacity; gl_Position = vec4(iOffset + position * iScale, 0.0, 1.0); }'
+            ].join('\n');
+
+            var waveFragment = [
+                'precision highp float;',
+                'varying vec2 vUv;',
+                'varying float vOpacity;',
+                'uniform float uRings;',
+                'const float PI = 3.141592653589793;',
+                'const float EDGE = 0.006737947;',
+                'void main() {',
+                '  vec2 p = vUv * 2.0 - 1.0;',
+                '  float r = dot(p, p);',
+                '  if (r > 1.0) discard;',
+                '  float brush = (exp(-r * 5.0) - EDGE) / (1.0 - EDGE);',
+                '  brush *= 0.55 + 0.45 * cos(sqrt(r) * PI * 2.0 * uRings);',
+                '  gl_FragColor = vec4(vec3(brush * vOpacity * vOpacity), 1.0);',
+                '}'
+            ].join('\n');
+
+            var screenVertex = [
+                'precision highp float;',
+                'attribute vec2 position;',
+                'attribute vec2 uv;',
+                'varying vec2 vUv;',
+                'void main() { vUv = uv; gl_Position = vec4(position, 0.0, 1.0); }'
+            ].join('\n');
+
+            var compositeFragment = [
+                'precision highp float;',
+                'varying vec2 vUv;',
+                'uniform sampler2D uTexture;',
+                'uniform sampler2D uDisplacement;',
+                'uniform vec2 uResolution;',
+                'uniform vec2 uTextureSize;',
+                'uniform vec2 uTexel;',
+                'uniform vec3 uTint;',
+                'uniform vec3 uHighlight;',
+                'uniform float uStrength;',
+                'uniform float uSwirl;',
+                'uniform float uDispersion;',
+                'uniform float uGlint;',
+                'uniform float uTintAmount;',
+                'uniform float uGrayscale;',
+                'const float TAU = 6.283185307179586;',
+                'vec2 coverUV(vec2 uv) {',
+                '  vec2 safe = max(uTextureSize, vec2(1.0));',
+                '  vec2 s = uResolution / safe;',
+                '  vec2 scaledSize = safe * max(s.x, s.y);',
+                '  vec2 offset = (uResolution - scaledSize) * 0.5;',
+                '  return (uv * uResolution - offset) / scaledSize;',
+                '}',
+                'void main() {',
+                '  float amount = texture2D(uDisplacement, vUv).r;',
+                '  vec2 base = coverUV(vUv);',
+                '  float theta = amount * uSwirl * TAU;',
+                '  vec2 dir = vec2(sin(theta), cos(theta));',
+                '  vec2 push = dir * amount * uStrength;',
+                '  vec3 color;',
+                '  if (uDispersion > 0.001) {',
+                '    float split = uDispersion * 0.25;',
+                '    color.r = texture2D(uTexture, base + push * (1.0 + split)).r;',
+                '    color.g = texture2D(uTexture, base + push).g;',
+                '    color.b = texture2D(uTexture, base + push * (1.0 - split)).b;',
+                '  } else {',
+                '    color = texture2D(uTexture, base + push).rgb;',
+                '  }',
+                '  if (uGrayscale > 0.001) { color = mix(color, vec3(dot(color, vec3(0.2126,0.7152,0.0722))), uGrayscale); }',
+                '  if (uTintAmount > 0.001) { color = mix(color, color * uTint * 1.9, clamp(amount * 1.6, 0.0, 1.0) * uTintAmount); }',
+                '  if (uGlint > 0.001) {',
+                '    float ex = texture2D(uDisplacement, vUv + vec2(uTexel.x, 0.0)).r - texture2D(uDisplacement, vUv - vec2(uTexel.x, 0.0)).r;',
+                '    float ey = texture2D(uDisplacement, vUv + vec2(0.0, uTexel.y)).r - texture2D(uDisplacement, vUv - vec2(0.0, uTexel.y)).r;',
+                '    vec3 normal = normalize(vec3(-ex * 26.0, -ey * 26.0, 1.0));',
+                '    vec3 light = normalize(vec3(-0.35, 0.55, 1.0));',
+                '    float raw = pow(max(dot(normal, light), 0.0), 22.0);',
+                '    float flatSpec = pow(max(light.z, 0.0), 22.0);',
+                '    color += uHighlight * clamp((raw - flatSpec) / max(1.0 - flatSpec, 0.0001), 0.0, 1.0) * uGlint;',
+                '  }',
+                '  gl_FragColor = vec4(color, 1.0);',
+                '}'
+            ].join('\n');
+
+            function hexToRGB(h) {
+                var c = h.replace('#', '');
+                if (c.length === 3) c = c.split('').map(function(x) { return x + x; }).join('');
+                var n = parseInt(c, 16);
+                if (isNaN(n)) return [1, 1, 1];
+                return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+            }
+
+            function mksh(type, src) {
+                var s = gl.createShader(type);
+                gl.shaderSource(s, src);
+                gl.compileShader(s);
+                return s;
+            }
+            function mkprog(vs, fs, attribs) {
+                var p = gl.createProgram();
+                gl.attachShader(p, vs);
+                gl.attachShader(p, fs);
+                for (var i = 0; i < attribs.length; i++) gl.bindAttribLocation(p, i, attribs[i]);
+                gl.linkProgram(p);
+                return p;
+            }
+
+            var waveProgram = mkprog(mksh(gl.VERTEX_SHADER, waveVertex), mksh(gl.FRAGMENT_SHADER, waveFragment),
+                ['position', 'uv', 'iOffset', 'iScale', 'iOpacity']);
+            var compProgram = mkprog(mksh(gl.VERTEX_SHADER, screenVertex), mksh(gl.FRAGMENT_SHADER, compositeFragment),
+                ['position', 'uv']);
+            if (!waveProgram || !compProgram) return;
+
+            // ---------- 背景纹理（程序化渐变，供涟漪折射） ----------
+            var bgW = 1024, bgH = 768;
+            var bgCanvas = document.createElement('canvas');
+            bgCanvas.width = bgW; bgCanvas.height = bgH;
+            var bctx = bgCanvas.getContext('2d');
+            var big = bctx.createLinearGradient(0, 0, bgW, bgH);
+            big.addColorStop(0, '#1b2b58');
+            big.addColorStop(0.5, '#233a6b');
+            big.addColorStop(1, '#0d1630');
+            bctx.fillStyle = big; bctx.fillRect(0, 0, bgW, bgH);
+            var soft = [
+                ['#7ac9ff', 0.26, 0.25], ['#63a6ff', 0.18, 0.72], ['#3fd0ff', 0.14, 0.45]
+            ];
+            for (var si = 0; si < soft.length; si++) {
+                var c = soft[si];
+                var cx = bgW * c[1], cy = bgH * c[2], rr = bgW * 0.5;
+                var rg = bctx.createRadialGradient(cx, cy, 0, cx, cy, rr);
+                rg.addColorStop(0, c[0] + '77');
+                rg.addColorStop(0.45, c[0] + '22');
+                rg.addColorStop(1, 'rgba(0,0,0,0)');
+                bctx.fillStyle = rg;
+                bctx.fillRect(0, 0, bgW, bgH);
+            }
+
+            var bgTex = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, bgTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bgCanvas);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+
+            // 接入 React Bits Ripple Distortion 演示所用的背景图, 加载完成后覆盖渐变兜底纹理
+            var bgImg = new Image();
+            bgImg.crossOrigin = 'anonymous';
+            bgImg.decoding = 'async';
+            bgImg.onload = function() {
+                var iw = bgImg.naturalWidth, ih = bgImg.naturalHeight;
+                if (!iw || !ih) return;
+                // 先缩放到常见纹理尺寸上限以内，避免大图超出 GPU MAX_TEXTURE_SIZE
+                var max = 1600, k = Math.min(1, max / Math.max(iw, ih));
+                var cw = Math.max(1, Math.round(iw * k)), ch = Math.max(1, Math.round(ih * k));
+                var tmp = document.createElement('canvas');
+                tmp.width = cw; tmp.height = ch;
+                tmp.getContext('2d').drawImage(bgImg, 0, 0, cw, ch);
+                bgW = cw; bgH = ch;
+                try {
+                    gl.bindTexture(gl.TEXTURE_2D, bgTex);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tmp);
+                    gl.bindTexture(gl.TEXTURE_2D, null);
+                } catch (e) {}
+            };
+            bgImg.src = 'https://images.unsplash.com/photo-1782977389500-dd7adad33ebe?q=80&w=3416&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+
+            // ---------- 位移贴图（低分辨率）+ 帧缓冲 ----------
+            var dispTex = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, dispTex);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            var dispFbo = gl.createFramebuffer();
+            var fieldW = 2, fieldH = 2;
+
+            // ---------- 几何/缓冲 ----------
+            function makeBuf(data) {
+                var b = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, b);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+                return b;
+            }
+            var quadPos = makeBuf([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]);
+            var quadUv  = makeBuf([ 0,0, 1,0,  0,1,  0,1, 1,0, 1,1]);
+            var triPos  = makeBuf([-1,-1, 3,-1, -1,3]);
+            var triUv   = makeBuf([ 0,0, 2,0,  0,2]);
+
+            var offsetArr = new Float32Array(MAX_WAVES * 2);
+            var scaleArr  = new Float32Array(MAX_WAVES * 2);
+            var opacityArr = new Float32Array(MAX_WAVES);
+            var offBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, offBuf); gl.bufferData(gl.ARRAY_BUFFER, offsetArr.byteLength, gl.DYNAMIC_DRAW);
+            var sclBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, sclBuf); gl.bufferData(gl.ARRAY_BUFFER, scaleArr.byteLength, gl.DYNAMIC_DRAW);
+            var opBuf  = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, opBuf);  gl.bufferData(gl.ARRAY_BUFFER, opacityArr.byteLength, gl.DYNAMIC_DRAW);
+
+            var waves = [], cur = 0;
+            for (var mi = 0; mi < MAX_WAVES; mi++) {
+                waves.push({ x: 0, y: 0, scale: START_SCALE, target: START_SCALE, size: 1, opacity: 0 });
+            }
+
+            var W = 1, H = 1;
+            var tintRGB = hexToRGB(P.tint), hlRGB = hexToRGB(P.highlight);
+
+            function resize() {
+                var r = container.getBoundingClientRect();
+                W = Math.max(1, r.width || 1);
+                H = Math.max(1, r.height || 1);
+                var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+                canvas.width = Math.max(1, Math.round(W * dpr));
+                canvas.height = Math.max(1, Math.round(H * dpr));
+                gl.viewport(0, 0, canvas.width, canvas.height);
+
+                fieldW = Math.max(2, Math.round(W * P.quality));
+                fieldH = Math.max(2, Math.round(H * P.quality));
+                gl.bindTexture(gl.TEXTURE_2D, dispTex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fieldW, fieldH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, dispFbo);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, dispTex, 0);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            }
+            window.addEventListener('resize', resize);
+
+            function setWave(x, y, power) {
+                var w = waves[cur];
+                cur = (cur + 1) % MAX_WAVES;
+                w.x = x; w.y = y;
+                w.scale = START_SCALE * power;
+                w.target = START_SCALE * Math.max(1, P.spread) * power;
+                w.size = Math.max(1, P.brushSize);
+                w.opacity = 1;
+            }
+
+            var prevX = 0, prevY = 0;
+            window.addEventListener('pointermove', function(e) {
+                if (REDUCE || P.trigger === 'click') return;
+                var r = container.getBoundingClientRect();
+                if (!r.width || !r.height) return;
+                if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+                var px = e.clientX - r.left, py = r.height - (e.clientY - r.top);
+                var step = Math.max(1, P.spacing);
+                if (Math.abs(px - prevX) > step || Math.abs(py - prevY) > step) {
+                    setWave(px, py, 1);
+                    prevX = px; prevY = py;
+                }
+            }, { passive: true });
+            window.addEventListener('pointerdown', function(e) {
+                if (REDUCE || P.trigger === 'hover') return;
+                var r = container.getBoundingClientRect();
+                if (!r.width) return;
+                var px = e.clientX - r.left, py = r.height - (e.clientY - r.top);
+                setWave(px, py, Math.max(1, P.clickStrength));
+            }, { passive: true });
+
+            resize();
+            var uRingsL = gl.getUniformLocation(waveProgram, 'uRings');
+            var cU = {
+                tex: gl.getUniformLocation(compProgram, 'uTexture'),
+                disp: gl.getUniformLocation(compProgram, 'uDisplacement'),
+                res: gl.getUniformLocation(compProgram, 'uResolution'),
+                tsize: gl.getUniformLocation(compProgram, 'uTextureSize'),
+                texel: gl.getUniformLocation(compProgram, 'uTexel'),
+                tint: gl.getUniformLocation(compProgram, 'uTint'),
+                hl: gl.getUniformLocation(compProgram, 'uHighlight'),
+                str: gl.getUniformLocation(compProgram, 'uStrength'),
+                sw: gl.getUniformLocation(compProgram, 'uSwirl'),
+                dis: gl.getUniformLocation(compProgram, 'uDispersion'),
+                gli: gl.getUniformLocation(compProgram, 'uGlint'),
+                tintA: gl.getUniformLocation(compProgram, 'uTintAmount'),
+                gray: gl.getUniformLocation(compProgram, 'uGrayscale')
+            };
+
+            var prev = 0;
+            function frame(now) {
+                requestAnimationFrame(frame);
+                var dt = prev ? Math.min(0.05, (now - prev) / 1000) : 0;
+                prev = now;
+                var growth = REDUCE ? 0 : 1 - Math.exp(-dt * 1.09);
+                var decay = REDUCE ? 1 : Math.exp((-dt * LIFE_CONSTANT) / Math.max(0.15, P.fade));
+
+                var hasWave = false;
+                for (var i = 0; i < MAX_WAVES; i++) {
+                    var w = waves[i];
+                    if (w.opacity <= 0) { opacityArr[i] = 0; continue; }
+                    w.opacity *= decay;
+                    w.scale += (w.target - w.scale) * growth;
+                    if (w.opacity < 0.002) { w.opacity = 0; opacityArr[i] = 0; continue; }
+                    var half = (w.scale * w.size) / 2;
+                    offsetArr[i * 2] = (w.x / W) * 2 - 1;
+                    offsetArr[i * 2 + 1] = (w.y / H) * 2 - 1;
+                    scaleArr[i * 2] = (half / W) * 2;
+                    scaleArr[i * 2 + 1] = (half / H) * 2;
+                    opacityArr[i] = w.opacity;
+                    hasWave = true;
+                }
+
+                // 上传 instanced 缓冲
+                gl.bindBuffer(gl.ARRAY_BUFFER, offBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, offsetArr);
+                gl.bindBuffer(gl.ARRAY_BUFFER, sclBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, scaleArr);
+                gl.bindBuffer(gl.ARRAY_BUFFER, opBuf);  gl.bufferSubData(gl.ARRAY_BUFFER, 0, opacityArr);
+
+                // Pass1：波纹环 → 位移贴图
+                gl.bindFramebuffer(gl.FRAMEBUFFER, dispFbo);
+                gl.viewport(0, 0, fieldW, fieldH);
+                gl.disable(gl.DEPTH_TEST);
+                gl.enable(gl.BLEND);
+                gl.blendFunc(gl.ONE, gl.ONE);
+                gl.clearColor(0, 0, 0, 1);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                if (hasWave) {
+                    gl.useProgram(waveProgram);
+                    gl.uniform1f(uRingsL, P.rings);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, quadPos);
+                    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, quadUv);
+                    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, offBuf);
+                    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0); ext.vertexAttribDivisorANGLE(2, 1);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, sclBuf);
+                    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 2, gl.FLOAT, false, 0, 0); ext.vertexAttribDivisorANGLE(3, 1);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, opBuf);
+                    gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 0, 0); ext.vertexAttribDivisorANGLE(4, 1);
+                    ext.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, MAX_WAVES);
+                }
+
+                // Pass2：屏幕合成（涟漪折射 + 高光）
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.disable(gl.BLEND);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.useProgram(compProgram);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, bgTex);
+                gl.uniform1i(cU.tex, 0);
+                gl.activeTexture(gl.TEXTURE1);
+                gl.bindTexture(gl.TEXTURE_2D, dispTex);
+                gl.uniform1i(cU.disp, 1);
+                gl.uniform2f(cU.res, W, H);
+                gl.uniform2f(cU.tsize, bgW, bgH);
+                gl.uniform2f(cU.texel, 1 / fieldW, 1 / fieldH);
+                gl.uniform3f(cU.tint, tintRGB[0], tintRGB[1], tintRGB[2]);
+                gl.uniform3f(cU.hl, hlRGB[0], hlRGB[1], hlRGB[2]);
+                gl.uniform1f(cU.str, P.strength);
+                gl.uniform1f(cU.sw, P.swirl);
+                gl.uniform1f(cU.dis, P.dispersion);
+                gl.uniform1f(cU.gli, P.glint);
+                gl.uniform1f(cU.tintA, P.tintAmount);
+                gl.uniform1f(cU.gray, P.grayscale);
+                gl.bindBuffer(gl.ARRAY_BUFFER, triPos);
+                gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, triUv);
+                gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
+            }
+            requestAnimationFrame(function(t) { prev = t; requestAnimationFrame(frame); });
+        })();
+    </script>
+
+    <!-- ===== DriftWall 3D 漂移图片墙 (原生 JS, React Bits 移植) ===== -->
+    <script>
+        (function() {
+            'use strict';
+            var root = document.getElementById('drift-wall');
+            if (!root) return;
+
+            var images = ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg'];
+            var items = images.map(function(f, i) { return { image: f, title: '掠影 ' + (i + 1) }; });
+
+            var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            var o = { columns: 4, tileWidth: 200, tileHeight: 132, gap: 18, tilt: 14, turn: -12, roll: 0, perspective: 1200, depth: 110, speed: 42, direction: 'up', variance: 0.5, parallax: 0.6 };
+
+            root.style.setProperty('--dw-tile-w', o.tileWidth + 'px');
+            root.style.setProperty('--dw-tile-h', o.tileHeight + 'px');
+            root.style.setProperty('--dw-gap', o.gap + 'px');
+            root.style.setProperty('--dw-radius', '14px');
+            root.style.setProperty('--dw-perspective', o.perspective + 'px');
+            root.style.setProperty('--dw-lift', '64px');
+            root.style.setProperty('--dw-dim', '0.55');
+            root.style.setProperty('--dw-gray', '0');
+            root.style.setProperty('--dw-overlay', '#060010');
+            root.style.setProperty('--dw-edge', '40%');
+
+            var columnItems = [];
+            for (var c = 0; c < o.columns; c++) { columnItems.push([]); }
+            items.forEach(function(it, i) { columnItems[i % o.columns].push(it); });
+            columnItems = columnItems.map(function(col) { return col.length ? col : items.slice(0, 1); });
+
+            var containerHeight = root.clientHeight || 600;
+            var unit = o.tileHeight + o.gap;
+            var meta = columnItems.map(function(col) {
+                var copyHeight = Math.max(unit, col.length * unit);
+                var copies = Math.max(2, Math.ceil((containerHeight * 1.6) / copyHeight) + 1);
+                return { copyHeight: copyHeight, copies: copies };
+            });
+
+            var dirSign = o.direction === 'up' ? 1 : -1;
+            var baseVel = columnItems.map(function(_, c) {
+                var alt = c % 2 === 0 ? 1 : -1;
+                var pseudo = ((c * 0.6180339887 + 0.35) % 1) * 2 - 1;
+                return o.speed * (1 + o.variance * pseudo) * dirSign * alt;
+            });
+
+            var offsets = meta.map(function(m, c) { return m.copyHeight * ((c * 0.37) % 1); });
+            var velocities = columnItems.map(function() { return 0; });
+
+            var plane = document.createElement('div');
+            plane.className = 'drift-wall__plane';
+            root.appendChild(plane);
+
+            // 列号辅助数据
+            var tracks = [];
+            var colIndex = {};
+            columnItems.forEach(function(col, c) {
+                var colEl = document.createElement('div');
+                colEl.className = 'drift-wall__col';
+                var track = document.createElement('div');
+                track.className = 'drift-wall__track';
+                tracks.push(track);
+                for (var ci = 0; ci < meta[c].copies; ci++) {
+                    col.forEach(function(item, ii) {
+                        var id = c + '-' + ci + '-' + ii;
+                        colIndex[id] = c;
+                        var tile = document.createElement('div');
+                        tile.className = 'drift-wall__tile';
+                        tile.setAttribute('data-tile-id', id);
+                        tile.tabIndex = 0;
+                        tile.setAttribute('role', 'button');
+                        tile.setAttribute('aria-label', item.title || 'tile');
+                        var inner = document.createElement('span');
+                        inner.className = 'drift-wall__inner';
+                        var img = document.createElement('img');
+                        img.src = item.image;
+                        img.alt = item.title || '';
+                        img.setAttribute('loading', 'lazy');
+                        img.setAttribute('decoding', 'async');
+                        img.draggable = false;
+                        var ov = document.createElement('span');
+                        ov.className = 'drift-wall__overlay';
+                        ov.setAttribute('aria-hidden', 'true');
+                        inner.appendChild(img);
+                        inner.appendChild(ov);
+                        tile.appendChild(inner);
+                        tile.addEventListener('click', function() { activate(id); });
+                        track.appendChild(tile);
+                    });
+                }
+                colEl.appendChild(track);
+                plane.appendChild(colEl);
+            });
+
+            var activeTile = null;
+            var hoveredCol = -1;
+            var wallHovered = false;
+            var pointer = { x: 0, y: 0 };
+            var pointerD = { x: 0, y: 0 };
+            var lastTs = null;
+
+            function setActiveTile(id) {
+                if (activeTile) activeTile.classList.remove('is-active');
+                activeTile = document.querySelector('.drift-wall__tile[data-tile-id="' + id + '"]');
+                if (activeTile) activeTile.classList.add('is-active');
+            }
+            function activate(id) {
+                hoveredCol = typeof colIndex[id] !== 'undefined' ? colIndex[id] : -1;
+                setActiveTile(id);
+            }
+            function release() {
+                hoveredCol = -1;
+                if (activeTile) { activeTile.classList.remove('is-active'); activeTile = null; }
+            }
+
+            root.addEventListener('pointermove', function(e) {
+                var rect = root.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                if (o.parallax > 0 && !reduced) {
+                    pointer = {
+                        x: (e.clientX - rect.left) / rect.width - 0.5,
+                        y: (e.clientY - rect.top) / rect.height - 0.5
+                    };
+                }
+                var hit = document.elementFromPoint(e.clientX, e.clientY);
+                var tile = hit && hit.closest ? hit.closest('[data-tile-id]') : null;
+                if (tile) activate(tile.getAttribute('data-tile-id'));
+                else release();
+            });
+            root.addEventListener('pointerenter', function() { wallHovered = true; });
+            root.addEventListener('pointerleave', function() {
+                wallHovered = false;
+                pointer = { x: 0, y: 0 };
+                release();
+            });
+
+            function animate(ts) {
+                if (lastTs === null) lastTs = ts;
+                var dt = Math.min(0.05, Math.max(0, (ts - lastTs) / 1000));
+                lastTs = ts;
+
+                var maxTilt = o.parallax * 8;
+                var damp = 1 - Math.exp(-dt / 0.12);
+                pointerD.x += ((pointer.x * maxTilt) - pointerD.x) * damp;
+                pointerD.y += ((-pointer.y * maxTilt) - pointerD.y) * damp;
+                plane.style.transform =
+                    'translate(-50%,-50%) scale(1.18) ' +
+                    'rotateX(' + (o.tilt + pointerD.y) + 'deg) ' +
+                    'rotateY(' + (o.turn + pointerD.x) + 'deg) ' +
+                    'rotateZ(' + o.roll + 'deg) ' +
+                    'translateZ(' + (-o.depth) + 'px)';
+
+                if (!reduced) {
+                    for (var c = 0; c < tracks.length; c++) {
+                        var m = meta[c];
+                        if (!m) continue;
+                        var factor = (hoveredCol === c) ? 0 : 1;
+                        var target = baseVel[c] * factor;
+                        var ease = 1 - Math.exp(-dt / (target === 0 ? 0.16 : 0.28));
+                        velocities[c] += (target - velocities[c]) * ease;
+                        var next = ((offsets[c] + velocities[c] * dt) % m.copyHeight + m.copyHeight) % m.copyHeight;
+                        offsets[c] = next;
+                        tracks[c].style.transform = 'translate3d(0,' + (-next) + 'px,0)';
+                    }
+                }
+                requestAnimationFrame(animate);
+            }
+            // 立即应用初始 3D 姿态(不依赖 rAF), 避免首帧前为 none
+            plane.style.transform =
+                'translate(-50%,-50%) scale(1.18) ' +
+                'rotateX(' + o.tilt + 'deg) rotateY(' + o.turn + 'deg) ' +
+                'rotateZ(' + o.roll + 'deg) translateZ(' + (-o.depth) + 'px)';
+            requestAnimationFrame(animate);
         })();
     </script>
 
