@@ -52,6 +52,8 @@ https://yanghao158640.github.io/competition-bootcamp/tank-game.html
   炮轰挡路砖墙开路、与营地对齐优先开火；**仅当玩家靠近（≤7 格）时**才允许少量敌军
   临时转为「猎手」追击玩家（同时最多 2 辆、约 5 秒），玩家拉开距离或追击超时后
   **立即回归进攻营地**；开火判定也是营地优先于玩家；
+- **敌军出生保护**：从顶部出生门传送入场时短暂无敌（约 0.7 秒，闪烁提示），
+  期间子弹直接穿过、且不会与玩家坦克互撞——避免"蹲在出生点堵门秒杀"；
 - **打击感**：屏幕震动、枪口火光、爆炸冲击环、命中白闪、击毁飘分、
   WebAudio 合成音效（零素材）；
 - **更高难度（当前版本）**：敌军开火冷却 55→44（约快 25%）、敌弹速度 5→6（更难躲）、
@@ -263,7 +265,7 @@ https://yanghao158640.github.io/competition-bootcamp/tank-game.html
       <li>🏫 <b>营地耐久</b>：最多承受 7 发炮弹（每局重置），归零触发「守护·时间倒流」</li>
       <li>❤️ <b>我方血量</b>：每条命 3 发，共 3 条生命；受击后 0.5 秒无敌；每关开始生命重置</li>
       <li>🕹️ <b>操作</b>：WASD / 方向键移动，空格开炮（手机用左下角固定摇杆移动，右下角按钮开炮）</li>
-      <li>🤖 <b>敌军</b>：从顶部三个出生门传送入场；多数打营地，头带红标的「猎手」追杀你</li>
+      <li>🤖 <b>敌军</b>：从顶部三个出生门传送入场，出生时短暂无敌（防堵门秒杀）；多数打营地，头带红标的「猎手」追杀你</li>
       <li>👹 <b>BOSS</b>：出场即召唤小怪；血量低于 10 时再召唤 5–6 辆增援，需先清场再击毁</li>
       <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 / 12 关单挑巨型坦克（最终 BOSS 54 血），击毁大量金币</li>
       <li>🤖 <b>敌军任务</b>：以<b>进攻营地为主</b>，仅在靠近你时才有少量敌军临时改打你（次要任务）</li>
@@ -730,7 +732,7 @@ function spawnEnemy(){
   const kind=cfg.mix[Math.floor(Math.random()*cfg.mix.length)];
   const ft=FOE_TYPES[kind];
   // 出生默认执行主任务（打基地）；打玩家为次要任务，由 enemyThink 在玩家靠近时临时指派
-  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,hunter:false,chaseT:0,spawnT:24,
+  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,hunter:false,chaseT:0,spawnT:24,invT:40,
     hp:ft.hp,sp:ft.sp*cfg.rate,color:ft.color,score:ft.score,hitT:0});
   gateFlash[gi]=18;
   foesTotal--;syncHud();
@@ -748,7 +750,7 @@ function spawnMinion(){
   if(boss&&!boss.dead&&x<boss.x+boss.size&&x+CELL>boss.x&&y<boss.y+boss.size&&y+CELL>boss.y)return;
   const kind=mix[Math.floor(Math.random()*mix.length)];
   const ft=FOE_TYPES[kind];
-  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,hunter:false,chaseT:0,spawnT:24,
+  enemies.push({x,y,dir:'down',cool:50,ai:0,kind,hunter:false,chaseT:0,spawnT:24,invT:40,
     hp:ft.hp,sp:ft.sp*(cfg.rate||1),color:ft.color,score:ft.score,hitT:0});
   gateFlash[gi]=18;syncHud();
 }
@@ -818,6 +820,7 @@ function brickAhead(e){
   return r>=0&&c>=0&&r<ROWS&&c<COLS&&map[r][c]===BRICK;
 }
 function enemyThink(e){
+  if(e.invT>0)e.invT--;
   if(e.spawnT>0){e.spawnT--;return}
   if(e.hitT>0)e.hitT--;
   if(e.hunter&&--e.chaseT<=0)e.hunter=false;   // 追击有时限，超时回归主任务（打基地）
@@ -997,14 +1000,14 @@ function resolveOverlaps(){
     let moved=false;
     // 敌军 vs 玩家
     for(const e of enemies){
-      if(e.spawnT>0)continue;
+      if(e.spawnT>0||e.invT>0)continue;
       if(rectOverlap(e,player,s)&&pushApart(e,s))moved=true;
     }
     // 敌军 vs 敌军（此前缺失，导致回退后挤在一起动不了）
     for(let i=0;i<enemies.length;i++){
-      const a=enemies[i];if(a.spawnT>0)continue;
+      const a=enemies[i];if(a.spawnT>0||a.invT>0)continue;
       for(let j=i+1;j<enemies.length;j++){
-        const b=enemies[j];if(b.spawnT>0)continue;
+        const b=enemies[j];if(b.spawnT>0||b.invT>0)continue;
         if(rectOverlap(a,b,s)){if(pushApart(a,s)||pushApart(b,s))moved=true}
       }
     }
@@ -1186,6 +1189,7 @@ function step(){
       const idx=enemies.findIndex(e=>b.x<e.x+s&&b.x+8>e.x&&b.y<e.y+s&&b.y+8>e.y);
       if(idx>-1){
         const e=enemies[idx];
+        if(e.invT>0)continue;   // 出生保护：子弹穿过不消耗
         e.hp-=b.dmg;e.hitT=6;
         bullets[i]=null;
         if(e.hp<=0){
@@ -1349,7 +1353,7 @@ function draw(){
       CX.save();CX.translate(e.x+17,e.y+17);CX.scale(k,k);CX.translate(-e.x-17,-e.y-17);
       CX.globalAlpha=k;drawTank(e,e.color,false);CX.globalAlpha=1;CX.restore();
     }else{
-      drawTank(e,e.color,e.hitT>0);
+      if(!(e.invT>0&&Math.floor(e.invT/5)%2===0))drawTank(e,e.color,e.hitT>0);
       if(e.hunter){
         CX.fillStyle='#ff4d4d';CX.beginPath();
         CX.moveTo(e.x+17,e.y-8);CX.lineTo(e.x+12,e.y-14);CX.lineTo(e.x+22,e.y-14);

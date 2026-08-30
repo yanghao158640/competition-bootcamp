@@ -1213,155 +1213,375 @@ https://yanghao158640.github.io/competition-bootcamp/
         })();
     </script>
 
-    <!-- ===== Ripple Distortion 波纹失真背景 (canvas 2D, React Bits 移植) ===== -->
+    <!-- ===== Ripple Distortion 波纹失真背景 (原生 WebGL, 忠实移植自 React Bits) ===== -->
     <script>
         (function() {
             'use strict';
             var container = document.getElementById('liquid-chrome');
             if (!container) return;
-            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
             var canvas = document.createElement('canvas');
-            var ctx = canvas.getContext('2d');
-            if (!ctx) return;
-            container.appendChild(canvas);
             canvas.style.width = '100%';
             canvas.style.height = '100%';
+            var gl = canvas.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false })
+                || canvas.getContext('experimental-webgl');
+            if (!gl) return;
+            var ext = gl.getExtension('ANGLE_instanced_arrays');
+            if (!ext) return;
+            container.appendChild(canvas);
 
-            var RES = 0.42;              // 渲染降采样，四周 CSS 拉伸 -> 柔和水面
-            var W = 1, H = 1;
-            var tex = document.createElement('canvas');
-            var tctx = tex.getContext('2d');
-            var texImg = null;
+            // ---------- 配置 ----------
+            var MAX_WAVES = 100, START_SCALE = 1.5, LIFE_CONSTANT = Math.log(500);
+            var P = {
+                strength: 0.28, swirl: 1, rings: 4, spread: 5, fade: 3, spacing: 8,
+                dispersion: 0.12, glint: 0.8, tint: '#56c8ff', tintAmount: 0.15,
+                highlight: '#ffffff', grayscale: 0, brushSize: 150, quality: 0.7, clickStrength: 2
+            };
 
-            var ripples = [];
-            var mouse = null;            // 涟漪源（像素坐标）
-            var lastRipple = 0;
-            var autoT = 0;
+            // ---------- 着色器（原样借用 React Bits RippleDistortion） ----------
+            var waveVertex = [
+                'precision highp float;',
+                'attribute vec2 position;',
+                'attribute vec2 uv;',
+                'attribute vec2 iOffset;',
+                'attribute vec2 iScale;',
+                'attribute float iOpacity;',
+                'varying vec2 vUv;',
+                'varying float vOpacity;',
+                'void main() { vUv = uv; vOpacity = iOpacity; gl_Position = vec4(iOffset + position * iScale, 0.0, 1.0); }'
+            ].join('\n');
 
-            function rand(a, b) { return a + Math.random() * (b - a); }
+            var waveFragment = [
+                'precision highp float;',
+                'varying vec2 vUv;',
+                'varying float vOpacity;',
+                'uniform float uRings;',
+                'const float PI = 3.141592653589793;',
+                'const float EDGE = 0.006737947;',
+                'void main() {',
+                '  vec2 p = vUv * 2.0 - 1.0;',
+                '  float r = dot(p, p);',
+                '  if (r > 1.0) discard;',
+                '  float brush = (exp(-r * 5.0) - EDGE) / (1.0 - EDGE);',
+                '  brush *= 0.55 + 0.45 * cos(sqrt(r) * PI * 2.0 * uRings);',
+                '  gl_FragColor = vec4(vec3(brush * vOpacity * vOpacity), 1.0);',
+                '}'
+            ].join('\n');
 
-            // 生成中性深色水面底纹（非彩色光斑），保留足够明暗层次让涟漪可见
-            function buildTexture(t) {
-                var w = tex.width = W, h = tex.height = H;
-                tctx.globalCompositeOperation = 'source-over';
-                var g = tctx.createLinearGradient(0, 0, 0, h);
-                g.addColorStop(0, '#0c1a30');
-                g.addColorStop(0.5, '#0a1426');
-                g.addColorStop(1, '#050a16');
-                tctx.fillStyle = g;
-                tctx.fillRect(0, 0, w, h);
-                // 柔和冷色水面反光带（低饱和蓝灰），随时间缓慢流动，提供可视纹理
-                for (var i = 0; i < 3; i++) {
-                    var gx = w * (0.25 + 0.5 * (i / 2)) + Math.sin(t * 0.0001 + i * 2.1) * w * 0.2;
-                    var gy = h * (0.3 + 0.4 * (i / 2)) + Math.cos(t * 0.00012 + i * 1.3) * h * 0.2;
-                    var rr = Math.max(w, h) * (0.35 + 0.12 * i);
-                    var rg = tctx.createRadialGradient(gx, gy, 0, gx, gy, rr);
-                    rg.addColorStop(0, 'rgba(120,150,205,0.22)');
-                    rg.addColorStop(1, 'rgba(30,50,90,0)');
-                    tctx.fillStyle = rg;
-                    tctx.fillRect(gx - rr, gy - rr, rr * 2, rr * 2);
-                }
-                texImg = tctx.getImageData(0, 0, w, h);
+            var screenVertex = [
+                'precision highp float;',
+                'attribute vec2 position;',
+                'attribute vec2 uv;',
+                'varying vec2 vUv;',
+                'void main() { vUv = uv; gl_Position = vec4(position, 0.0, 1.0); }'
+            ].join('\n');
+
+            var compositeFragment = [
+                'precision highp float;',
+                'varying vec2 vUv;',
+                'uniform sampler2D uTexture;',
+                'uniform sampler2D uDisplacement;',
+                'uniform vec2 uResolution;',
+                'uniform vec2 uTextureSize;',
+                'uniform vec2 uTexel;',
+                'uniform vec3 uTint;',
+                'uniform vec3 uHighlight;',
+                'uniform float uStrength;',
+                'uniform float uSwirl;',
+                'uniform float uDispersion;',
+                'uniform float uGlint;',
+                'uniform float uTintAmount;',
+                'uniform float uGrayscale;',
+                'const float TAU = 6.283185307179586;',
+                'vec2 coverUV(vec2 uv) {',
+                '  vec2 safe = max(uTextureSize, vec2(1.0));',
+                '  vec2 s = uResolution / safe;',
+                '  vec2 scaledSize = safe * max(s.x, s.y);',
+                '  vec2 offset = (uResolution - scaledSize) * 0.5;',
+                '  return (uv * uResolution - offset) / scaledSize;',
+                '}',
+                'void main() {',
+                '  float amount = texture2D(uDisplacement, vUv).r;',
+                '  vec2 base = coverUV(vUv);',
+                '  float theta = amount * uSwirl * TAU;',
+                '  vec2 dir = vec2(sin(theta), cos(theta));',
+                '  vec2 push = dir * amount * uStrength;',
+                '  vec3 color;',
+                '  if (uDispersion > 0.001) {',
+                '    float split = uDispersion * 0.25;',
+                '    color.r = texture2D(uTexture, base + push * (1.0 + split)).r;',
+                '    color.g = texture2D(uTexture, base + push).g;',
+                '    color.b = texture2D(uTexture, base + push * (1.0 - split)).b;',
+                '  } else {',
+                '    color = texture2D(uTexture, base + push).rgb;',
+                '  }',
+                '  if (uGrayscale > 0.001) { color = mix(color, vec3(dot(color, vec3(0.2126,0.7152,0.0722))), uGrayscale); }',
+                '  if (uTintAmount > 0.001) { color = mix(color, color * uTint * 1.9, clamp(amount * 1.6, 0.0, 1.0) * uTintAmount); }',
+                '  if (uGlint > 0.001) {',
+                '    float ex = texture2D(uDisplacement, vUv + vec2(uTexel.x, 0.0)).r - texture2D(uDisplacement, vUv - vec2(uTexel.x, 0.0)).r;',
+                '    float ey = texture2D(uDisplacement, vUv + vec2(0.0, uTexel.y)).r - texture2D(uDisplacement, vUv - vec2(0.0, uTexel.y)).r;',
+                '    vec3 normal = normalize(vec3(-ex * 26.0, -ey * 26.0, 1.0));',
+                '    vec3 light = normalize(vec3(-0.35, 0.55, 1.0));',
+                '    float raw = pow(max(dot(normal, light), 0.0), 22.0);',
+                '    float flatSpec = pow(max(light.z, 0.0), 22.0);',
+                '    color += uHighlight * clamp((raw - flatSpec) / max(1.0 - flatSpec, 0.0001), 0.0, 1.0) * uGlint;',
+                '  }',
+                '  gl_FragColor = vec4(color, 1.0);',
+                '}'
+            ].join('\n');
+
+            function hexToRGB(h) {
+                var c = h.replace('#', '');
+                if (c.length === 3) c = c.split('').map(function(x) { return x + x; }).join('');
+                var n = parseInt(c, 16);
+                if (isNaN(n)) return [1, 1, 1];
+                return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
             }
 
+            function mksh(type, src) {
+                var s = gl.createShader(type);
+                gl.shaderSource(s, src);
+                gl.compileShader(s);
+                return s;
+            }
+            function mkprog(vs, fs, attribs) {
+                var p = gl.createProgram();
+                gl.attachShader(p, vs);
+                gl.attachShader(p, fs);
+                for (var i = 0; i < attribs.length; i++) gl.bindAttribLocation(p, i, attribs[i]);
+                gl.linkProgram(p);
+                return p;
+            }
+
+            var waveProgram = mkprog(mksh(gl.VERTEX_SHADER, waveVertex), mksh(gl.FRAGMENT_SHADER, waveFragment),
+                ['position', 'uv', 'iOffset', 'iScale', 'iOpacity']);
+            var compProgram = mkprog(mksh(gl.VERTEX_SHADER, screenVertex), mksh(gl.FRAGMENT_SHADER, compositeFragment),
+                ['position', 'uv']);
+            if (!waveProgram || !compProgram) return;
+
+            // ---------- 背景纹理（程序化渐变，供涟漪折射） ----------
+            var bgW = 1024, bgH = 768;
+            var bgCanvas = document.createElement('canvas');
+            bgCanvas.width = bgW; bgCanvas.height = bgH;
+            var bctx = bgCanvas.getContext('2d');
+            var big = bctx.createLinearGradient(0, 0, bgW, bgH);
+            big.addColorStop(0, '#1b2b58');
+            big.addColorStop(0.5, '#233a6b');
+            big.addColorStop(1, '#0d1630');
+            bctx.fillStyle = big; bctx.fillRect(0, 0, bgW, bgH);
+            var soft = [
+                ['#7ac9ff', 0.26, 0.25], ['#63a6ff', 0.18, 0.72], ['#3fd0ff', 0.14, 0.45]
+            ];
+            for (var si = 0; si < soft.length; si++) {
+                var c = soft[si];
+                var cx = bgW * c[1], cy = bgH * c[2], rr = bgW * 0.5;
+                var rg = bctx.createRadialGradient(cx, cy, 0, cx, cy, rr);
+                rg.addColorStop(0, c[0] + '77');
+                rg.addColorStop(0.45, c[0] + '22');
+                rg.addColorStop(1, 'rgba(0,0,0,0)');
+                bctx.fillStyle = rg;
+                bctx.fillRect(0, 0, bgW, bgH);
+            }
+
+            var bgTex = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, bgTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bgCanvas);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+
+            // ---------- 位移贴图（低分辨率）+ 帧缓冲 ----------
+            var dispTex = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, dispTex);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            var dispFbo = gl.createFramebuffer();
+            var fieldW = 2, fieldH = 2;
+
+            // ---------- 几何/缓冲 ----------
+            function makeBuf(data) {
+                var b = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, b);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+                return b;
+            }
+            var quadPos = makeBuf([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]);
+            var quadUv  = makeBuf([ 0,0, 1,0,  0,1,  0,1, 1,0, 1,1]);
+            var triPos  = makeBuf([-1,-1, 3,-1, -1,3]);
+            var triUv   = makeBuf([ 0,0, 2,0,  0,2]);
+
+            var offsetArr = new Float32Array(MAX_WAVES * 2);
+            var scaleArr  = new Float32Array(MAX_WAVES * 2);
+            var opacityArr = new Float32Array(MAX_WAVES);
+            var offBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, offBuf); gl.bufferData(gl.ARRAY_BUFFER, offsetArr.byteLength, gl.DYNAMIC_DRAW);
+            var sclBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, sclBuf); gl.bufferData(gl.ARRAY_BUFFER, scaleArr.byteLength, gl.DYNAMIC_DRAW);
+            var opBuf  = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, opBuf);  gl.bufferData(gl.ARRAY_BUFFER, opacityArr.byteLength, gl.DYNAMIC_DRAW);
+
+            var waves = [], cur = 0;
+            for (var mi = 0; mi < MAX_WAVES; mi++) {
+                waves.push({ x: 0, y: 0, scale: START_SCALE, target: START_SCALE, size: 1, opacity: 0 });
+            }
+
+            var W = 1, H = 1;
+            var tintRGB = hexToRGB(P.tint), hlRGB = hexToRGB(P.highlight);
+
             function resize() {
-                W = Math.max(1, Math.floor((window.innerWidth || 1) * RES));
-                H = Math.max(1, Math.floor((window.innerHeight || 1) * RES));
-                canvas.width = W; canvas.height = H;
-                tex.width = W; tex.height = H;
-                img = ctx.createImageData(W, H);
-                buildTexture(performance.now());
+                var r = container.getBoundingClientRect();
+                W = Math.max(1, r.width || 1);
+                H = Math.max(1, r.height || 1);
+                var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+                canvas.width = Math.max(1, Math.round(W * dpr));
+                canvas.height = Math.max(1, Math.round(H * dpr));
+                gl.viewport(0, 0, canvas.width, canvas.height);
+
+                fieldW = Math.max(2, Math.round(W * P.quality));
+                fieldH = Math.max(2, Math.round(H * P.quality));
+                gl.bindTexture(gl.TEXTURE_2D, dispTex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fieldW, fieldH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, dispFbo);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, dispTex, 0);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             }
             window.addEventListener('resize', resize);
 
-            function addRipple(x, y) {
-                if (ripples.length > 20) ripples.shift();
-                ripples.push({
-                    x: x, y: y, birth: performance.now(), age: 0,
-                    radius: 5, phase: rand(0, Math.PI * 2),
-                    speed: rand(90, 135), amp: rand(7, 13), freq: rand(0.045, 0.075)
-                });
+            function setWave(x, y, power) {
+                var w = waves[cur];
+                cur = (cur + 1) % MAX_WAVES;
+                w.x = x; w.y = y;
+                w.scale = START_SCALE * power;
+                w.target = START_SCALE * Math.max(1, P.spread) * power;
+                w.size = Math.max(1, P.brushSize);
+                w.opacity = 1;
             }
 
-            function spawnAuto() {
-                if (mouse) addRipple(mouse.x, mouse.y);
-                else addRipple(rand(0, W), rand(0, H));
-            }
-
-            var img = null;            // 在 resize 中按实际尺寸创建
-            var then = performance.now();
-
-            function render(t) {
-                var dt = Math.min(0.05, (t - then) / 1000 || 0.016);
-                then = t;
-
-                buildTexture(t);          // 光斑流动
-                var sx = texImg.data;
-
-                // 清理过期涟漪并更新半径/寿命
-                var diag = Math.sqrt(W * W + H * H);
-                var alive = [];
-                for (var i = 0; i < ripples.length; i++) {
-                    var r = ripples[i];
-                    r.age = t - r.birth;
-                    r.radius += r.speed * dt;
-                    r._life = Math.exp(-r.age * 0.0009);
-                    if (r.age < 4200 && r.radius < diag * 0.35) alive.push(r);
-                }
-                ripples = alive;
-
-                // 平滑产生涟漪，保证无鼠标时也有波纹光彩
-                autoT += dt;
-                if (autoT > 1.1) { autoT = 0; spawnAuto(); }
-                if (mouse) { lastRipple += dt; if (lastRipple > 0.13) { lastRipple = 0; addRipple(mouse.x, mouse.y); } }
-
-                var px = img.data, Wm = W - 1, Hm = H - 1, kN = ripples.length;
-                var k = 0;
-                for (var y = 0; y < H; y++) {
-                    for (var x = 0; x < W; x++) {
-                        var ox = 0, oy = 0, bri = 0;
-                        for (var j = 0; j < kN; j++) {
-                            var rp = ripples[j];
-                            var dx = x - rp.x, dy = y - rp.y;
-                            if (dx > rp.radius || dx < -rp.radius) continue;
-                            if (dy > rp.radius || dy < -rp.radius) continue;
-                            var d = Math.sqrt(dx * dx + dy * dy);
-                            if (d < rp.radius && d > 0.5) {
-                                var ph = (rp.radius - d) * rp.freq - rp.age * 0.0045;
-                                var wn = 1 - d / rp.radius;
-                                var wv = Math.sin(ph) * rp._life * wn;
-                                bri += wv * 0.9;                  // 波前高光 -> 亮暗波纹环
-                                var off = wv * rp.amp;
-                                ox += (dx / d) * off;
-                                oy += (dy / d) * off;
-                            }
-                        }
-                        var u = Math.round(x + ox), v = Math.round(y + oy);
-                        u = u < 0 ? 0 : (u > Wm ? Wm : u);
-                        v = v < 0 ? 0 : (v > Hm ? Hm : v);
-                        var s = (v * W + u) << 2, o = k << 2;
-                        var l = 1 + bri;                          // 亮带让涟漪清晰可见
-                        var r = sx[s] * l, g = sx[s + 1] * l, b = sx[s + 2] * l;
-                        px[o]   = r > 255 ? 255 : (r < 0 ? 0 : r);
-                        px[o+1] = g > 255 ? 255 : (g < 0 ? 0 : g);
-                        px[o+2] = b > 255 ? 255 : (b < 0 ? 0 : b);
-                        px[o+3] = 255;
-                        k++;
-                    }
-                }
-                ctx.putImageData(img, 0, 0);
-                requestAnimationFrame(render);
-            }
-
+            var prevX = 0, prevY = 0;
             window.addEventListener('pointermove', function(e) {
-                var iw = window.innerWidth || 1, ih = window.innerHeight || 1;
-                mouse = { x: (e.clientX / iw) * W, y: (e.clientY / ih) * H };
-            });
-            window.addEventListener('pointerleave', function() { mouse = null; });
+                if (REDUCE || P.trigger === 'click') return;
+                var r = container.getBoundingClientRect();
+                if (!r.width || !r.height) return;
+                if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+                var px = e.clientX - r.left, py = r.height - (e.clientY - r.top);
+                var step = Math.max(1, P.spacing);
+                if (Math.abs(px - prevX) > step || Math.abs(py - prevY) > step) {
+                    setWave(px, py, 1);
+                    prevX = px; prevY = py;
+                }
+            }, { passive: true });
+            window.addEventListener('pointerdown', function(e) {
+                if (REDUCE || P.trigger === 'hover') return;
+                var r = container.getBoundingClientRect();
+                if (!r.width) return;
+                var px = e.clientX - r.left, py = r.height - (e.clientY - r.top);
+                setWave(px, py, Math.max(1, P.clickStrength));
+            }, { passive: true });
 
             resize();
-            requestAnimationFrame(function(t) { then = t; requestAnimationFrame(render); });
+            var uRingsL = gl.getUniformLocation(waveProgram, 'uRings');
+            var cU = {
+                tex: gl.getUniformLocation(compProgram, 'uTexture'),
+                disp: gl.getUniformLocation(compProgram, 'uDisplacement'),
+                res: gl.getUniformLocation(compProgram, 'uResolution'),
+                tsize: gl.getUniformLocation(compProgram, 'uTextureSize'),
+                texel: gl.getUniformLocation(compProgram, 'uTexel'),
+                tint: gl.getUniformLocation(compProgram, 'uTint'),
+                hl: gl.getUniformLocation(compProgram, 'uHighlight'),
+                str: gl.getUniformLocation(compProgram, 'uStrength'),
+                sw: gl.getUniformLocation(compProgram, 'uSwirl'),
+                dis: gl.getUniformLocation(compProgram, 'uDispersion'),
+                gli: gl.getUniformLocation(compProgram, 'uGlint'),
+                tintA: gl.getUniformLocation(compProgram, 'uTintAmount'),
+                gray: gl.getUniformLocation(compProgram, 'uGrayscale')
+            };
+
+            var prev = 0;
+            function frame(now) {
+                requestAnimationFrame(frame);
+                var dt = prev ? Math.min(0.05, (now - prev) / 1000) : 0;
+                prev = now;
+                var growth = REDUCE ? 0 : 1 - Math.exp(-dt * 1.09);
+                var decay = REDUCE ? 1 : Math.exp((-dt * LIFE_CONSTANT) / Math.max(0.15, P.fade));
+
+                var hasWave = false;
+                for (var i = 0; i < MAX_WAVES; i++) {
+                    var w = waves[i];
+                    if (w.opacity <= 0) { opacityArr[i] = 0; continue; }
+                    w.opacity *= decay;
+                    w.scale += (w.target - w.scale) * growth;
+                    if (w.opacity < 0.002) { w.opacity = 0; opacityArr[i] = 0; continue; }
+                    var half = (w.scale * w.size) / 2;
+                    offsetArr[i * 2] = (w.x / W) * 2 - 1;
+                    offsetArr[i * 2 + 1] = (w.y / H) * 2 - 1;
+                    scaleArr[i * 2] = (half / W) * 2;
+                    scaleArr[i * 2 + 1] = (half / H) * 2;
+                    opacityArr[i] = w.opacity;
+                    hasWave = true;
+                }
+
+                // 上传 instanced 缓冲
+                gl.bindBuffer(gl.ARRAY_BUFFER, offBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, offsetArr);
+                gl.bindBuffer(gl.ARRAY_BUFFER, sclBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, scaleArr);
+                gl.bindBuffer(gl.ARRAY_BUFFER, opBuf);  gl.bufferSubData(gl.ARRAY_BUFFER, 0, opacityArr);
+
+                // Pass1：波纹环 → 位移贴图
+                gl.bindFramebuffer(gl.FRAMEBUFFER, dispFbo);
+                gl.viewport(0, 0, fieldW, fieldH);
+                gl.disable(gl.DEPTH_TEST);
+                gl.enable(gl.BLEND);
+                gl.blendFunc(gl.ONE, gl.ONE);
+                gl.clearColor(0, 0, 0, 1);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                if (hasWave) {
+                    gl.useProgram(waveProgram);
+                    gl.uniform1f(uRingsL, P.rings);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, quadPos);
+                    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, quadUv);
+                    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, offBuf);
+                    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0); ext.vertexAttribDivisorANGLE(2, 1);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, sclBuf);
+                    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 2, gl.FLOAT, false, 0, 0); ext.vertexAttribDivisorANGLE(3, 1);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, opBuf);
+                    gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 0, 0); ext.vertexAttribDivisorANGLE(4, 1);
+                    ext.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, MAX_WAVES);
+                }
+
+                // Pass2：屏幕合成（涟漪折射 + 高光）
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                gl.disable(gl.BLEND);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.useProgram(compProgram);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, bgTex);
+                gl.uniform1i(cU.tex, 0);
+                gl.activeTexture(gl.TEXTURE1);
+                gl.bindTexture(gl.TEXTURE_2D, dispTex);
+                gl.uniform1i(cU.disp, 1);
+                gl.uniform2f(cU.res, W, H);
+                gl.uniform2f(cU.tsize, bgW, bgH);
+                gl.uniform2f(cU.texel, 1 / fieldW, 1 / fieldH);
+                gl.uniform3f(cU.tint, tintRGB[0], tintRGB[1], tintRGB[2]);
+                gl.uniform3f(cU.hl, hlRGB[0], hlRGB[1], hlRGB[2]);
+                gl.uniform1f(cU.str, P.strength);
+                gl.uniform1f(cU.sw, P.swirl);
+                gl.uniform1f(cU.dis, P.dispersion);
+                gl.uniform1f(cU.gli, P.glint);
+                gl.uniform1f(cU.tintA, P.tintAmount);
+                gl.uniform1f(cU.gray, P.grayscale);
+                gl.bindBuffer(gl.ARRAY_BUFFER, triPos);
+                gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+                gl.bindBuffer(gl.ARRAY_BUFFER, triUv);
+                gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
+            }
+            requestAnimationFrame(function(t) { prev = t; requestAnimationFrame(frame); });
         })();
     </script>
 

@@ -192,6 +192,17 @@ enemies=[eL];bullets=[];player.x=1*CELL;player.y=1*CELL;
 var b0=bullets.length;for(var i=0;i<20;i++)enemyThink(eL);
 check('贴脸敌军 enemyThink 实际开火',bullets.length>b0,'bullets='+(bullets.length-b0));
 
+console.log('【7e】敌军出生保护：出生瞬间不被秒杀，子弹穿过，保护结束可击伤');
+startGame(1,'campaign');advance();
+enemies=[{x:5*CELL,y:2*CELL,dir:'down',cool:999,ai:0,kind:'basic',hunter:false,chaseT:0,spawnT:24,invT:40,hp:2,sp:0,color:'#e05a4e',score:100,hitT:0}];
+var eh=enemies[0].hp;
+bullets.push({x:5*CELL+5,y:2*CELL+5,dx:0,dy:0,speed:0,dmg:1,friendly:1});step();
+check('出生保护期不受伤',enemies.length===1&&enemies[0].hp===eh,'hp='+(enemies[0]?enemies[0].hp:'gone'));
+check('出生保护期子弹穿过不消耗',bullets.length===1,'bullets='+bullets.length);
+enemies[0].invT=0;bullets=[];
+bullets.push({x:5*CELL+5,y:2*CELL+5,dx:0,dy:0,speed:0,dmg:1,friendly:1});step();
+check('保护期结束可被击伤',enemies.length===1&&enemies[0].hp===eh-1,'hp='+(enemies[0]?enemies[0].hp:'gone'));
+
 console.log('【8】生存模式 + 里程碑 + buff（最高 10 天无 BOSS）');
 startGame(1,'survival');advance();
 check('模式为生存',mode==='survival');
