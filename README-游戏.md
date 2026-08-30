@@ -30,13 +30,14 @@ https://yanghao158640.github.io/competition-bootcamp/tank-game.html
   玩家确认后才开局；
 - **自选坦克**：轻型·猎豹（高机动）/ 标准·战狼（均衡）/ 重型·堡垒（双倍伤害）；
 - **12 个关卡 + BOSS 战**：第 4、8、12 关为 BOSS 战（巨型坦克：厚血、三连发散射、
-  碾碎砖墙，顶部专属血条，最终 BOSS 45 血）；每关开始生命重置为 3 条、营地修复 +2；
+  碾碎砖墙，顶部专属血条，最终 BOSS 54 血）；每关开始生命重置为 3 条、营地修复 +2；
 - **BOSS 防卡死**：BOSS 关开局清空出生区（部分地图出生格带钢墙，原会导致出生即卡死）；
   无更优路线时随机换向、撞墙按车身整排碾砖、长时间卡死则碾掉身周砖强制脱困；
 - **随机道具**：⭐火力+1 / 🔧营地修理 / 🛡️无敌 6 秒 / ❄️冻结敌军 5 秒 /
-  💣全屏爆破 / 🪙金币+50——定时刷新 + 击杀 25% 掉落，走过去拾取；
-- **金币商店**：击杀 +6、通关奖励（50 + 关卡×30 + 剩余生命×20）、BOSS +100、金币道具 +50，
+  💣全屏爆破 / 🪙金币+30——定时刷新 + 击杀 25% 掉落，走过去拾取；
+- **金币商店**：击杀 +4、通关奖励（30 + 关卡×18 + 剩余生命×12）、BOSS +70、金币道具 +30，
   可购火力/移速/射速/血量上限/生命/营地加固/钢墙护营（强化营地与坦克）；
+  永久升级满级总价约 **8943** 金币，**完整闯关一周目仅约 2280 金币，需约 3–4 周目才能把坦克永久升满**；
 - **守护·时间倒流（3 次）**：营地失守不直接判负，触发时间暂停音效 +
   坦克缓缓回退原位 + 砖墙与营地还原；**每次回溯都有专属台词**
   （前两次随机：鼓励如"稳住，这局还能翻！"、纯嘲讽玩家如"就这？营地差点又没了"
@@ -53,6 +54,9 @@ https://yanghao158640.github.io/competition-bootcamp/tank-game.html
   **立即回归进攻营地**；开火判定也是营地优先于玩家；
 - **打击感**：屏幕震动、枪口火光、爆炸冲击环、命中白闪、击毁飘分、
   WebAudio 合成音效（零素材）；
+- **更高难度（当前版本）**：敌军开火冷却 55→44（约快 25%）、敌弹速度 5→6（更难躲）、
+  敌军移动速度整体上调约 8–10%、出生间隔 90→78（场上同屏压力更大）、
+  BOSS 血量 20/35/45 → 24/42/54（更耐打）；
 - 【身份标识】地图中央砖墙摆成姓名缩写「YYH」+ 画布右下角「杨豫豪 · YYH」水印；
 - 【底图】主版本采用一张 AI 生成的 1920×1080 战场封面（自托管 bg-battle.jpg，
   无外部依赖），叠加暗罩保留可读性；另存「浪尖.html」为浪尖儿社区底图版（含社区素材，
@@ -258,7 +262,7 @@ https://yanghao158640.github.io/competition-bootcamp/tank-game.html
       <li>❤️ <b>我方血量</b>：每条命 3 发，共 3 条生命；受击后 0.5 秒无敌；每关开始生命重置</li>
       <li>🕹️ <b>操作</b>：WASD / 方向键移动，空格开炮（手机用屏幕虚拟按键）</li>
       <li>🤖 <b>敌军</b>：从顶部三个出生门传送入场；多数打营地，头带红标的「猎手」追杀你</li>
-      <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 / 12 关单挑巨型坦克（最终 BOSS 45 血），击毁大量金币</li>
+      <li>👹 <b>BOSS</b>（闯关）：第 4 / 8 / 12 关单挑巨型坦克（最终 BOSS 54 血），击毁大量金币</li>
       <li>🤖 <b>敌军任务</b>：以<b>进攻营地为主</b>，仅在靠近你时才有少量敌军临时改打你（次要任务）</li>
       <li>🎁 <b>道具</b>：⭐火力 🔧修理 🛡️无敌 ❄️冻结 💣爆破 🪙金币 ❤️加命 ⚡速射</li>
       <li>🛒 <b>商店</b>：每关通关后可用金币强化（本局内生效）</li>
@@ -343,11 +347,11 @@ function spendCoins(n){coins-=n;meta.coins=coins;saveMeta()}
 
 /* ================= 永久升级商品 ================= */
 const PERM=[
-  {id:'dmg', ico:'swords',name:'火力 +1',  desc:'永久伤害 +1（最多 +3）',     base:300,step:1.5,max:3},
-  {id:'speed',ico:'zap',   name:'移速 +8%', desc:'永久移速提升（最多 +5）',     base:200,step:1.4,max:5},
-  {id:'cool', ico:'timer', name:'射速 +8%', desc:'永久射速提升（最多 +5）',     base:220,step:1.4,max:5},
-  {id:'hp',   ico:'heart', name:'血量上限 +1',desc:'永久血量上限 +1（最多 +2）', base:260,step:1.6,max:2},
-  {id:'base', ico:'castle',name:'营地耐久 +1',desc:'永久营地耐久 +1（最多 +3）', base:280,step:1.6,max:3}
+  {id:'dmg', ico:'swords',name:'火力 +1',  desc:'永久伤害 +1（最多 +3）',     base:330,step:1.5,max:3},
+  {id:'speed',ico:'zap',   name:'移速 +8%', desc:'永久移速提升（最多 +5）',     base:220,step:1.4,max:5},
+  {id:'cool', ico:'timer', name:'射速 +8%', desc:'永久射速提升（最多 +5）',     base:240,step:1.4,max:5},
+  {id:'hp',   ico:'heart', name:'血量上限 +1',desc:'永久血量上限 +1（最多 +2）', base:285,step:1.6,max:2},
+  {id:'base', ico:'castle',name:'营地耐久 +1',desc:'永久营地耐久 +1（最多 +3）', base:310,step:1.6,max:3}
 ];
 function permCost(it){return Math.round(it.base*Math.pow(it.step,meta.perm[it.id]||0))}
 
@@ -359,24 +363,24 @@ const TANK_TYPES=[
 ];
 /* ================= 敌军类型 ================= */
 const FOE_TYPES={
-  basic:{hp:1,sp:1.3, color:'#e05a4e',score:100},
-  fast: {hp:1,sp:2.3, color:'#e08a3e',score:150},
-  armor:{hp:3,sp:0.95,color:'#a06ae0',score:300}
+  basic:{hp:1,sp:1.4, color:'#e05a4e',score:100},
+  fast: {hp:1,sp:2.5, color:'#e08a3e',score:150},
+  armor:{hp:3,sp:1.05,color:'#a06ae0',score:300}
 };
 /* ================= 闯关关卡配置（12 关，每 4 关 BOSS） ================= */
 const LEVELS=[
   {total:6, alive:3,mix:['basic','basic','basic'],       rate:1.00},
   {total:8, alive:4,mix:['basic','basic','fast'],        rate:1.08},
   {total:10,alive:4,mix:['basic','fast','armor'],        rate:1.16},
-  {total:0, alive:0,mix:[],rate:1.15,boss:true,bossHp:20,bossSp:0.8},
+  {total:0, alive:0,mix:[],rate:1.15,boss:true,bossHp:24,bossSp:0.8},
   {total:12,alive:5,mix:['fast','basic','armor','armor'],rate:1.26},
   {total:12,alive:5,mix:['fast','armor','armor'],        rate:1.34},
   {total:14,alive:5,mix:['armor','fast','armor','fast'], rate:1.42},
-  {total:0, alive:0,mix:[],rate:1.30,boss:true,bossHp:35,bossSp:1.0},
+  {total:0, alive:0,mix:[],rate:1.30,boss:true,bossHp:42,bossSp:1.0},
   {total:14,alive:6,mix:['armor','fast','armor','fast'], rate:1.46},
   {total:16,alive:6,mix:['armor','fast','armor','armor'],rate:1.52},
   {total:16,alive:6,mix:['fast','fast','armor','armor'], rate:1.58},
-  {total:0, alive:0,mix:[],rate:1.45,boss:true,bossHp:45,bossSp:1.1}
+  {total:0, alive:0,mix:[],rate:1.45,boss:true,bossHp:54,bossSp:1.1}
 ];
 /* 每关额外障碍（YYH 中央布局保持不变，只调整外围） */
 const LEVEL_WALLS=[
@@ -662,10 +666,10 @@ function tankMove(t,dx,dy){
 /* ================= 开炮 / 爆炸 / 飘字 ================= */
 function fire(t,friendly){
   if(t.cool>0)return;
-  t.cool=friendly?Math.round(t.bcool*(rapidT>0?0.4:1)):Math.round(55/levelCfg().rate);
+  t.cool=friendly?Math.round(t.bcool*(rapidT>0?0.4:1)):Math.round(44/levelCfg().rate);
   const s=t.size||(CELL-6),[dx,dy]=DIRS[t.dir];
   bullets.push({x:t.x+s/2-4+dx*20,y:t.y+s/2-4+dy*20,dx,dy,
-    speed:friendly?t.bspeed:5,dmg:friendly?t.dmg:1,friendly});
+    speed:friendly?t.bspeed:6,dmg:friendly?t.dmg:1,friendly});
   parts.push({x:t.x+s/2+dx*26,y:t.y+s/2+dy*26,vx:dx*2,vy:dy*2,life:6,muzzle:true});
   if(friendly){S.shoot();addShake(1.2)}
 }
@@ -699,11 +703,11 @@ function applyItem(type){
     case 'shield':player.shieldT=360;break;
     case 'freeze':freezeT=300;break;
     case 'bomb':
-      enemies.forEach(e=>{boom(e.x+17,e.y+17,true);score+=e.score;coins+=3;levelKills++});
+      enemies.forEach(e=>{boom(e.x+17,e.y+17,true);score+=e.score;coins+=2;levelKills++});
       enemies=[];
       if(boss&&!boss.dead){boss.hp-=5;boss.hitT=8;if(boss.hp<=0)killBoss()}
       break;
-    case 'coin':gainCoins(50);S.coin();break;
+    case 'coin':gainCoins(30);S.coin();break;
     case 'life':lives=Math.min(5+(meta.buff?1:0),lives+1);break;
     case 'rapid':rapidT=900;break;
   }
@@ -905,7 +909,7 @@ function killBoss(){
   boss.dead=true;
   const bx=boss.x+boss.size/2,by=boss.y+boss.size/2;
   for(let i=0;i<3;i++)boom(bx+(Math.random()-.5)*40,by+(Math.random()-.5)*40,true);
-  score+=1000;gainCoins(100);levelKills++;
+  score+=1000;gainCoins(70);levelKills++;
   addFloat(bx,by-20,'击毁 BOSS！+1000 分 +150🪙','#ffd666');
   addShake(14);S.win();
 }
@@ -1019,10 +1023,10 @@ function onLevelClear(){
   let reward,extra='';
   if(mode==='survival'){
     const ms=survivalMilestone(level);
-    reward=Math.round((25+level*18+ms.bonus)*goldMul());   // 生存金币随天数递增
+    reward=Math.round((15+level*10+Math.round(ms.bonus*0.6))*goldMul());   // 生存金币随天数递增
     extra=ms.msg;
   }else{
-    reward=Math.round((50+level*30+lives*20)*goldMul());   // 闯关金币随关卡递增
+    reward=Math.round((30+level*18+lives*12)*goldMul());   // 闯关金币随关卡递增
   }
   gainCoins(reward);
   const praise=PRAISES[Math.floor(Math.random()*PRAISES.length)];
@@ -1103,7 +1107,7 @@ function step(){
   if(rapidT>0)rapidT--;
   if(keys.fire)fire(player,true);               // 长按开炮（手机端）
   const cfg=levelCfg();
-  if(--spawnTimer<=0&&enemies.length<cfg.alive&&foesTotal>0){spawnTimer=Math.round(90/cfg.rate);spawnEnemy()}
+  if(--spawnTimer<=0&&enemies.length<cfg.alive&&foesTotal>0){spawnTimer=Math.round(78/cfg.rate);spawnEnemy()}
   for(let gi=0;gi<3;gi++)if(gateFlash[gi]>0)gateFlash[gi]--;
   if(--pDistTimer<=0){pDistTimer=45;computePlayerDist()}
   if(freezeT>0){freezeT--}
@@ -1163,7 +1167,7 @@ function step(){
         if(e.hp<=0){
           boom(e.x+17,e.y+17,true);
           addFloat(e.x+17,e.y-6,'+'+e.score,'#ffd666');
-          score+=e.score;gainCoins(6);levelKills++;
+          score+=e.score;gainCoins(4);levelKills++;
           enemies.splice(idx,1);
           if(Math.random()<.25)spawnItem(e.x,e.y);
           syncHud();checkLevelEnd();

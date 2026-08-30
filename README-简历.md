@@ -101,6 +101,17 @@ https://yanghao158640.github.io/competition-bootcamp/
             animation: float 10s ease-in-out infinite alternate-reverse;
         }
 
+        /* ===== Dynamic Canvas Background (dark glow + waves) ===== */
+        #bgCanvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+            pointer-events: none;
+        }
+
         /* ===== Reveal scroll animation ===== */
         .reveal {
             opacity: 0;
@@ -286,6 +297,9 @@ https://yanghao158640.github.io/competition-bootcamp/
 </head>
 
 <body class="bg-[#030712] text-slate-200 font-jakarta min-h-screen overflow-x-hidden relative">
+
+    <!-- ===== Dynamic Background (dark glow + waves) ===== -->
+    <canvas id="bgCanvas" aria-hidden="true"></canvas>
 
     <!-- ===== Background Glow Blobs ===== -->
     <div class="glow-blob-1" aria-hidden="true"></div>
@@ -1067,6 +1081,98 @@ https://yanghao158640.github.io/competition-bootcamp/
             }
 
             console.log('✅ 简历重构完毕 | 证书8项 | 图片8张 | Tailwind + Lucide 就绪');
+        })();
+    </script>
+
+    <!-- ===== Dynamic Background Animation (dark glow + flowing waves) ===== -->
+    <script>
+        (function() {
+            'use strict';
+            const canvas = document.getElementById('bgCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            let W = 0,
+                H = 0;
+            const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+            function resize() {
+                W = window.innerWidth;
+                H = window.innerHeight;
+                canvas.width = W * DPR;
+                canvas.height = H * DPR;
+                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            // 慢动作光晕团: 位置(x,y)、半径、主色、相位
+            const orbs = [
+                { x: 0.18, y: 0.22, r: 0.45, hue: 190, ph: 0 },
+                { x: 0.82, y: 0.30, r: 0.42, hue: 235, ph: 2.1 },
+                { x: 0.60, y: 0.85, r: 0.50, hue: 265, ph: 4.2 },
+                { x: 0.30, y: 0.75, r: 0.38, hue: 175, ph: 1.1 }
+            ];
+
+            // 流动波浪带参数
+            const waves = [
+                { amp: 0.05, speed: 0.28, lyr: 0.42, alpha: 0.16, hue: 188, off: 0 },
+                { amp: 0.07, speed: -0.20, lyr: 0.58, alpha: 0.13, hue: 232, off: 2.6 },
+                { amp: 0.04, speed: 0.34, lyr: 0.74, alpha: 0.11, hue: 262, off: 5.2 }
+            ];
+
+            let t = 0;
+
+            function draw() {
+                t += 0.016;
+                ctx.clearRect(0, 0, W, H);
+                const time = t;
+
+                // 1) 流动波浪带 (aurora 风格的半透明正弦光带)
+                waves.forEach(w => {
+                    ctx.beginPath();
+                    for (let x = 0; x <= W; x += 4) {
+                        const p = x / W;
+                        const y = H * (w.lyr + w.amp * Math.sin(p * Math.PI * 2.4 + time * w.speed + w.off) +
+                            w.amp * 0.5 * Math.sin(p * Math.PI * 6 + time * w.speed * 1.7 + w.off * 2));
+                        if (x === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.lineTo(W, H);
+                    ctx.lineTo(0, H);
+                    ctx.closePath();
+                    const g = ctx.createLinearGradient(0, 0, 0, H);
+                    g.addColorStop(0, 'hsla(' + w.hue + ', 85%, 55%, 0)');
+                    g.addColorStop(0.08, 'hsla(' + w.hue + ', 85%, 55%, ' + w.alpha + ')');
+                    g.addColorStop(w.lyr + 0.2, 'hsla(' + (w.hue + 30) + ', 80%, 60%, ' + (w.alpha * 0.4) + ')');
+                    g.addColorStop(1, 'hsla(' + w.hue + ', 80%, 55%, 0)');
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                });
+
+                // 2) 动态光晕 (缓慢漂移+呼吸的发光圆)
+                ctx.globalCompositeOperation = 'lighter';
+                orbs.forEach(o => {
+                    const ox = W * (o.x + 0.055 * Math.sin(time * 0.22 + o.ph));
+                    const oy = H * (o.y + 0.055 * Math.cos(time * 0.18 + o.ph * 1.3));
+                    const r = Math.max(W, H) * o.r * (0.85 + 0.15 * Math.sin(time * 0.5 + o.ph));
+                    const g = ctx.createRadialGradient(ox, oy, 0, ox, oy, r);
+                    g.addColorStop(0, 'hsla(' + o.hue + ', 90%, 62%, 0.10)');
+                    g.addColorStop(0.5, 'hsla(' + (o.hue + 20) + ', 85%, 58%, 0.05)');
+                    g.addColorStop(1, 'hsla(' + o.hue + ', 85%, 55%, 0)');
+                    ctx.fillStyle = g;
+                    ctx.beginPath();
+                    ctx.arc(ox, oy, r, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalCompositeOperation = 'source-over';
+
+                requestAnimationFrame(draw);
+            }
+
+            // 尊重用户减少动态偏好
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (!reduce) draw();
         })();
     </script>
 

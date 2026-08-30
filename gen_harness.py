@@ -113,12 +113,12 @@ check('道具标签均两字',ITEM_KEYS.every(k=>ITEM_TYPES[k].label.length===2)
 console.log('【7】闯关 12 关 + BOSS');
 check('闯关共 12 关',LEVELS.length===12&&CAMPAIGN_LEVELS===12,'len='+LEVELS.length);
 level=4;setupLevel();state='playing';
-check('第4关 BOSS 血量 20',boss&&boss.hp===20);
+check('第4关 BOSS 血量 24',boss&&boss.hp===24);
 check('BOSS 关无小兵',foesTotal===0);
 level=8;setupLevel();
-check('第8关 BOSS 血量 35',boss&&boss.hp===35);
+check('第8关 BOSS 血量 42',boss&&boss.hp===42);
 level=12;setupLevel();
-check('第12关最终 BOSS 血量 45',boss&&boss.hp===45);
+check('第12关最终 BOSS 血量 54',boss&&boss.hp===54);
 level=12;foesTotal=0;enemies=[];boss.hp=1;
 bullets.push({x:boss.x+10,y:boss.y+10,dx:0,dy:0,speed:0,dmg:1,friendly:1});step();
 check('闯关通关进入 win',state==='win',state);
@@ -202,7 +202,7 @@ check('进入第2波',level===2&&state==='ready');
 check('生存过关营地修复+1',baseHp<=baseMaxHp);
 // 里程碑 5 天
 level=5;setupLevel();state='playing';foesTotal=0;enemies=[];var c5=meta.coins;checkLevelEnd();
-check('生存5天奖励金币',meta.coins>=c5+300,'+'+(meta.coins-c5));
+check('生存5天奖励金币(新公式≈185)',meta.coins===c5+185,'+'+(meta.coins-c5));
 advance();
 // 里程碑 10 天 → 生存通关 + 永久 buff + 庆典
 meta.buff=false;saveMeta();var gm0=goldMul();
