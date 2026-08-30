@@ -749,12 +749,30 @@ function computePlayerDist(){
   }
 }
 function clearShotToBase(e){
-  const cx=e.x+17;
-  if(cx<BASE.x-8||cx>BASE.x+BASE.w+8)return false;
-  const c=Math.floor(cx/CELL),r0=Math.floor((e.y+17)/CELL),r1=13;
-  for(let r=Math.min(r0,r1)+1;r<Math.max(r0,r1);r++)
-    if(map[r]&&map[r][c]!==EMPTY)return false;
-  e.dir=r0<r1?'down':'up';return true;
+  const ex=e.x+17, ey=e.y+17;
+  const c=Math.floor(ex/CELL), r0=Math.floor(ey/CELL);
+  const bc0=11, bc1=12;                 // 基地占用的两列（第 13 行）
+  const near=r0>=10;                    // 接近基地(下半区)才允许隔砖射击/贴脸
+  // 竖直：站在基地覆盖带(含左右相邻列 10~13)且不在基地所在行, 朝基地开火
+  if(c>=10&&c<=13&&r0!==13){
+    const tr=13; let ok=true;
+    for(let r=Math.min(r0,tr)+1;r<Math.max(r0,tr);r++){
+      const cell=map[r]&&map[r][c];
+      if(cell===STEEL)ok=false;                 // 钢墙护营：彻底挡住
+      else if(cell===BRICK&&!near)ok=false;     // 远处需清空路；近处可隔砖拆墙开路
+    }
+    if(ok){e.dir=r0<tr?'down':'up';return true;}
+  }
+  // 水平贴脸：与基地同处第 13 行, 站在左右相邻列(10 或 13), 朝基地横向开火
+  if(r0===13&&(c===bc0-1||c===bc1+1)){
+    const step=c<bc0?1:-1; let ok=true;
+    for(let cc=c+step; cc!==(step>0?bc1+1:bc0-1); cc+=step){
+      const cell=map[13]&&map[13][cc];
+      if(cell===STEEL)ok=false;                 // 钢墙护营：挡住；基地本身(矩形)正是目标, 放行
+    }
+    if(ok){e.dir=c<bc0?'right':'left';return true;}
+  }
+  return false;
 }
 function clearShotToPlayer(e){
   const ex=e.x+17,ey=e.y+17,px=player.x+17,py=player.y+17;
