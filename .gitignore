@@ -74,3 +74,6 @@ desktop.ini
 
 # 日志
 *.log
+tmp/
+__pycache__/
+*.py[cod]
