@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """生成坦克大战 v3 无头测试 harness.js：DOM 桩 + 游戏脚本 + 测试用例"""
 import re
+from pathlib import Path
 
-html = open(r'D:\outputs\竞赛训练营\tank-game.html', encoding='utf-8').read()
+root = Path(__file__).resolve().parent
+html = (root / 'tank-game.html').read_text(encoding='utf-8')
 src = re.findall(r'<script>(.*?)</script>', html, re.S)[-1]
 
 stub = r'''
@@ -312,6 +314,8 @@ console.log('');
 console.log(__errors.length===0?'ALL PASS':'FAILED '+__errors.length+': '+__errors.join('；'));
 '''
 
-with open(r'D:\outputs\竞赛训练营\harness.js', 'w', encoding='utf-8') as f:
+output = root / 'tmp' / 'harness.js'
+output.parent.mkdir(exist_ok=True)
+with output.open('w', encoding='utf-8') as f:
     f.write(stub + src + test)
 print('harness.js written,', len(stub + src + test), 'chars')
