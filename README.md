@@ -17,6 +17,6 @@
 
 `python gen_harness.py` 会根据当前游戏生成 `tmp/harness.js`，再运行 `node tmp/harness.js` 检查游戏逻辑。生成文件和缓存不提交。
 
-个人简历与作品信息统一在 https://github.com/yanghao158640/portfolio 维护，此仓库不再另存一份简历源码。历史 Netlify 配置保留供已有部署使用。
+个人简历与作品信息统一在 https://github.com/yanghao158640/portfolio 维护，此仓库不再另存一份简历源码。当前自动发布使用 GitHub Pages。2026-10-25 已移除失效的重复 Netlify 自动发布工作流；历史手动配置 `netlify.toml` 保留，旧流程可从 Git 历史恢复。
 
 2026-10-24 清理了内容完全相同的 `浪尖-备份.html`、两份包含旧代码全文的重复说明和一个空文件。清理前版本可从 `maintenance-backup-2026-10-24` 标签恢复。
